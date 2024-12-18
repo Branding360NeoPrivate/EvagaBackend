@@ -8,8 +8,12 @@ const JWT_SECRET = process.env.ACCESS_TOKEN_SECRET;
 const verifyJwt = (allowedRoles) => {
   return async (req, res, next) => {
     const token =
-      req.cookies?.accessToken ||
-      req.header("Authorization")?.replace("Bearer ", "");
+      req.header("Authorization")?.replace("Bearer ", "") ||
+      req.cookies?.accessToken;
+    console.log(
+      req.header("Authorization")?.replace("Bearer ", ""),
+      req.cookies?.accessToken
+    );
 
     if (!token) {
       return res.status(401).json({ error: "Unauthorized request" });
@@ -39,7 +43,6 @@ const verifyJwt = (allowedRoles) => {
             "Access denied. You are not authorized to access this resource. Please verify your credentials or contact support for assistance.",
         });
       }
-
 
       req.user = user;
       req.user.role = role;
