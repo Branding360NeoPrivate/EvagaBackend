@@ -4,16 +4,12 @@ import Admin from "../modals/admin.modal.js";
 import Vender from "../modals/vendor.modal.js";
 
 const JWT_SECRET = process.env.ACCESS_TOKEN_SECRET;
-
+console.log(JWT_SECRET, "JWT_SECRET", process.env.ACCESS_TOKEN_SECRET);
 const verifyJwt = (allowedRoles) => {
   return async (req, res, next) => {
     const token =
       req.header("Authorization")?.replace("Bearer ", "") ||
       req.cookies?.accessToken;
-    console.log(
-      req.header("Authorization")?.replace("Bearer ", ""),
-      req.cookies?.accessToken
-    );
 
     if (!token) {
       return res.status(401).json({ error: "Unauthorized request" });
