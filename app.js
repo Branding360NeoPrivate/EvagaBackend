@@ -17,25 +17,33 @@ const app = express();
 //     credentials: true,
 //   })
 // );
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:8001",
-  "https://main.d33v12li0wdsv4.amplifyapp.com",
-  "https://13.53.219.16",
-  "http://13.53.219.16",
-  "http://evagatest.s3-website.eu-north-1.amazonaws.com/",
-];
+// const allowedOrigins = [
+//   "http://localhost:3000",
+//   "http://localhost:8001",
+//   "https://main.d33v12li0wdsv4.amplifyapp.com",
+//   "https://13.53.219.16",
+//   "http://13.53.219.16",
+//   "http://evagatest.s3-website.eu-north-1.amazonaws.com/",
+// ];
+// const corsOptions = {
+//   origin: function (origin, callback) {
+//     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   credentials: true,
+// };
+// app.use(cors());
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
+  origin: (origin, callback) => {
+    callback(null, true); // Allow all origins
   },
-  credentials: true,
+  credentials: true, // Allow cookies/auth headers
 };
-app.use(cors());
+
+app.use(cors(corsOptions));
 // removed cors
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
