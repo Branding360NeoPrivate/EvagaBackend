@@ -23,6 +23,7 @@ const allowedOrigins = [
   "https://main.d33v12li0wdsv4.amplifyapp.com",
   "https://13.53.219.16",
   "http://13.53.219.16",
+  "http://evagatest.s3-website.eu-north-1.amazonaws.com/",
 ];
 const corsOptions = {
   origin: function (origin, callback) {
