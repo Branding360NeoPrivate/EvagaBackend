@@ -22,6 +22,7 @@ const allowedOrigins = [
   "http://localhost:8001",
   "https://main.d33v12li0wdsv4.amplifyapp.com",
   "https://13.53.219.16",
+  "http://13.53.219.16",
 ];
 const corsOptions = {
   origin: function (origin, callback) {
