@@ -73,8 +73,8 @@ const registerVendor = async (req, res) => {
     );
     res
       .status(201)
-      // .cookie("accessToken", accessToken, options)
-      // .cookie("refreshToken", refreshToken, options)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
       .json({
         message: "User registered successfully",
         role: "vendor",
