@@ -202,7 +202,7 @@ const addVenderService = async (req, res) => {
     }
 
     const services = JSON.parse(req.body.services);
-   
+    console.log(services, "services");
 
     const formattedServices = services.map((service, serviceIndex) => {
       const transformedValues = {};
@@ -243,6 +243,15 @@ const addVenderService = async (req, res) => {
               .map((file) =>
                 file.path.replace(/^public[\\/]/, "").replace(/\\/g, "/")
               ) || [];
+        } else if (key === "Certifications") {
+          value.items =
+            req.files
+              ?.filter(
+                (file) => file.fieldname === `Certifications${serviceIndex}`
+              )
+              .map((file) =>
+                file.path.replace(/^public[\\/]/, "").replace(/\\/g, "/")
+              ) || [];
         } else if (key === "Portfolio") {
           value.items = {
             photos:
@@ -276,7 +285,7 @@ const addVenderService = async (req, res) => {
 
         transformedValues[value.key] = value.items;
       });
-      service?.menu?.forEach((value) => {
+      service.menu.forEach((value) => {
         transMenuValues[value.key] = value.items;
       });
 
