@@ -16,7 +16,10 @@ const verifyJwt = (allowedRoles) => {
     }
 
     try {
-      const decodedToken = jwt.verify(token, JWT_SECRET);
+      const decodedToken = jwt.verify(
+        token,
+        JWT_SECRET || process.env.ACCESS_TOKEN_SECRET
+      );
       const { role, _id } = decodedToken;
       let user;
 
@@ -39,7 +42,6 @@ const verifyJwt = (allowedRoles) => {
             "Access denied. You are not authorized to access this resource. Please verify your credentials or contact support for assistance.",
         });
       }
-
 
       req.user = user;
       req.user.role = role;
