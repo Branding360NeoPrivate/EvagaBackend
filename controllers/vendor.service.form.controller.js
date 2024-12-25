@@ -285,7 +285,7 @@ const addVenderService = async (req, res) => {
 
         transformedValues[value.key] = value.items;
       });
-      service.menu.forEach((value) => {
+      service?.menu?.forEach((value) => {
         transMenuValues[value.key] = value.items;
       });
 
