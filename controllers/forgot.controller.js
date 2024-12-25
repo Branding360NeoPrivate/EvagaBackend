@@ -1,5 +1,5 @@
 import { error } from "console";
-import admin from "../firebase/firebase.js";
+// import admin from "../firebase/firebase.js";
 import Vender from "../modals/vendor.modal.js";
 import { sendEmail } from "../utils/emailService.js";
 
