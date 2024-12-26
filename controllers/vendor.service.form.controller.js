@@ -1,4 +1,5 @@
 import VendorServiceLisitingForm from "../modals/vendorServiceListingForm.modal.js";
+import fs from "fs";
 // const addVenderService = async (req, res) => {
 //   const { vendorId } = req.params;
 //   const {
@@ -286,7 +287,7 @@ const addVenderService = async (req, res) => {
         transformedValues[value.key] = value.items;
       });
       service?.menu?.forEach((value) => {
-        transMenuValues[value.key] = value.items;
+        transMenuValues[value.key] = value?.items;
       });
 
       return {
@@ -315,6 +316,17 @@ const addVenderService = async (req, res) => {
     res.status(201).json({ message: "Form submission created successfully" });
   } catch (error) {
     console.error("Error creating submission:", error);
+        // Delete any uploaded files
+        if (req.files) {
+          req.files.forEach((file) => {
+            const filePath = file.path.replace(/^public[\\/]/, "");
+            fs.unlink(filePath, (err) => {
+              if (err) {
+                console.error("Error deleting file:", filePath, err);
+              }
+            });
+          });
+        }
     res
       .status(500)
       .json({ message: "Failed to create submission", error: error.message });

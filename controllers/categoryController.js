@@ -114,7 +114,11 @@ const getSubCategoriesByCategory = async (req, res) => {
   const { categoryId } = req.params;
 
   try {
-    const subCategories = await SubCategory.find({ categoryId });
+    const subCategories = await SubCategory.find({
+      categoryId,
+      status: { $ne: false },
+    });
+
     res.status(200).json(subCategories);
   } catch (error) {
     console.log(error);

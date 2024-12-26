@@ -31,7 +31,8 @@ const formSchema = new mongoose.Schema(
             "object",
             "array",
             "multi-select",
-            "option"
+            "option",
+            "time"
           ],
         },
         required: { type: Boolean, default: false },
