@@ -203,7 +203,6 @@ const addVenderService = async (req, res) => {
     }
 
     const services = JSON.parse(req.body.services);
-    console.log(services, "services");
 
     const formattedServices = services.map((service, serviceIndex) => {
       const transformedValues = {};
@@ -286,10 +285,15 @@ const addVenderService = async (req, res) => {
 
         transformedValues[value.key] = value.items;
       });
-      service?.menu?.forEach((value) => {
-        transMenuValues[value.key] = value?.items;
-      });
-
+      // service?.menu?.forEach((value) => {
+      //   transMenuValues[value.key] = value?.items;
+      // });
+      if (Array.isArray(service.menu)) {
+        service.menu.forEach((menuItem) => {
+          const { key, items } = menuItem;
+          transMenuValues[key] = items;
+        });
+      }
       return {
         menuTemplateId: service.menuTemplateId || null,
         values: transformedValues,
@@ -316,17 +320,17 @@ const addVenderService = async (req, res) => {
     res.status(201).json({ message: "Form submission created successfully" });
   } catch (error) {
     console.error("Error creating submission:", error);
-        // Delete any uploaded files
-        if (req.files) {
-          req.files.forEach((file) => {
-            const filePath = file.path.replace(/^public[\\/]/, "");
-            fs.unlink(filePath, (err) => {
-              if (err) {
-                console.error("Error deleting file:", filePath, err);
-              }
-            });
-          });
-        }
+    // Delete any uploaded files
+    if (req.files) {
+      req.files.forEach((file) => {
+        const filePath = file.path.replace(/^public[\\/]/, "");
+        fs.unlink(filePath, (err) => {
+          if (err) {
+            console.error("Error deleting file:", filePath, err);
+          }
+        });
+      });
+    }
     res
       .status(500)
       .json({ message: "Failed to create submission", error: error.message });
@@ -337,7 +341,15 @@ const getOneVenderService = async (req, res) => {
   const { serviceId } = req.params;
 
   try {
-    const service = await VendorServiceLisitingForm.findById(serviceId);
+    const service = await VendorServiceLisitingForm.findById(serviceId)
+      .populate({
+        path: "Category",
+        select: "name",
+      })
+      .populate({
+        path: "SubCategory",
+        select: "name",
+      });
 
     if (!service) {
       return res.status(404).json({ error: "Vendor service not found" });
@@ -360,7 +372,18 @@ const getAllVenderService = async (req, res) => {
   try {
     const services = await VendorServiceLisitingForm.find({
       vendorId: vendorId,
-    });
+    })
+      .populate({
+        path: "Category",
+        select: "name",
+      })
+      .populate({
+        path: "SubCategory",
+        select: "name",
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+
     if (!services) {
       return res.status(404).json({ error: "Vendor services not found" });
     }
@@ -427,30 +450,38 @@ const deleteVenderService = async (req, res) => {
   }
 };
 const VerifyService = async (req, res) => {
-  const { serviceId } = req.params;
-  const { remarks } = req.body;
-
+  const { serviceId, packageid } = req.params;
+  const { remarks, status } = req.body;
+  console.log(serviceId, packageid, remarks, status,req.body);
+  
   try {
-    const verifiedService = await VendorServiceLisitingForm.findByIdAndUpdate(
-      serviceId,
-      {
-        status: true,
-        verifiedAt: Date.now(),
-        verifiedBy: req.user._id,
-        remarks: remarks || "",
-      },
-      { new: true }
-    );
+    
+    const verifiedService = await VendorServiceLisitingForm.findById(serviceId);
 
     if (!verifiedService) {
       return res.status(404).json({ error: "Vendor service not found" });
     }
+    const packageToUpdate = verifiedService.services.find(
+      (pkg) => pkg._id.toString() === packageid
+    );
+
+    if (!packageToUpdate) {
+      return res
+        .status(404)
+        .json({ error: "Package not found in the service" });
+    }
+  
+    packageToUpdate.status=status;
+    packageToUpdate.remarks=remarks || "";;
+    packageToUpdate.verifiedAt=Date.now();
+    packageToUpdate.verifiedBy=req.user._id;
+    await verifiedService.save()
 
     res.status(200).json({
-      message: "Vendor service verified successfully",
-      verifiedService,
+      message: "Vendor service Verification successfully",
     });
   } catch (error) {
+    
     res.status(500).json({
       message: "Failed to verify vendor service",
       error: error.message,
