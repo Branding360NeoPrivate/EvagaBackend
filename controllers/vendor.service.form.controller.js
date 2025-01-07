@@ -207,6 +207,8 @@ const addVenderService = async (req, res) => {
     const formattedServices = services.map((service, serviceIndex) => {
       const transformedValues = {};
       const transMenuValues = {};
+      const transCateringValueInVenueValues = {};
+      const transCateringPackageVenueValues = {};
 
       service.values.forEach((value) => {
         const key = value.key;
@@ -285,6 +287,41 @@ const addVenderService = async (req, res) => {
 
         transformedValues[value.key] = value.items;
       });
+      service.values.forEach((value) => {
+        const key = value.key;
+
+        if (key === "CoverImage") {
+          value.items =
+            req.files
+              ?.filter(
+                (file) => file.fieldname === `CoverImage_cateringPackageVenue_${serviceIndex}`
+              )
+              .map((file) =>
+                file.path.replace(/^public[\\/]/, "").replace(/\\/g, "/")
+              ) || [];
+        }  else if (key === "Portfolio") {
+          value.items = {
+            photos:
+              req.files
+                ?.filter((file) =>
+                  file.fieldname.startsWith(`Portfolio_photos_cateringPackageVenue_${serviceIndex}_`)
+                )
+                .map((file) =>
+                  file.path.replace(/^public[\\/]/, "").replace(/\\/g, "/")
+                ) || [],
+            videos:
+              req.files
+                ?.filter((file) =>
+                  file.fieldname.startsWith(`Portfolio_videos_cateringPackageVenue_${serviceIndex}_`)
+                )
+                .map((file) =>
+                  file.path.replace(/^public[\\/]/, "").replace(/\\/g, "/")
+                ) || [],
+          };
+        } 
+
+        transCateringPackageVenueValues[value.key] = value.items;
+      });
       // service?.menu?.forEach((value) => {
       //   transMenuValues[value.key] = value?.items;
       // });
@@ -294,10 +331,18 @@ const addVenderService = async (req, res) => {
           transMenuValues[key] = items;
         });
       }
+      if (Array.isArray(service.menu)) {
+        service?.cateringValueInVenue?.forEach((menuItem) => {
+          const { key, items } = menuItem;
+          transCateringValueInVenueValues[key] = items;
+        });
+      }
       return {
         menuTemplateId: service.menuTemplateId || null,
         values: transformedValues,
         menu: transMenuValues || null,
+        cateringValueInVenue: transCateringValueInVenueValues || null,
+        cateringPackageVenue: transCateringPackageVenueValues || null,
         status: service.status || false,
         verifiedAt: service.verifiedAt || null,
         verifiedBy: service.verifiedBy || null,
@@ -452,10 +497,9 @@ const deleteVenderService = async (req, res) => {
 const VerifyService = async (req, res) => {
   const { serviceId, packageid } = req.params;
   const { remarks, status } = req.body;
-  console.log(serviceId, packageid, remarks, status,req.body);
-  
+  console.log(serviceId, packageid, remarks, status, req.body);
+
   try {
-    
     const verifiedService = await VendorServiceLisitingForm.findById(serviceId);
 
     if (!verifiedService) {
@@ -470,18 +514,17 @@ const VerifyService = async (req, res) => {
         .status(404)
         .json({ error: "Package not found in the service" });
     }
-  
-    packageToUpdate.status=status;
-    packageToUpdate.remarks=remarks || "";;
-    packageToUpdate.verifiedAt=Date.now();
-    packageToUpdate.verifiedBy=req.user._id;
-    await verifiedService.save()
+
+    packageToUpdate.status = status;
+    packageToUpdate.remarks = remarks || "";
+    packageToUpdate.verifiedAt = Date.now();
+    packageToUpdate.verifiedBy = req.user._id;
+    await verifiedService.save();
 
     res.status(200).json({
       message: "Vendor service Verification successfully",
     });
   } catch (error) {
-    
     res.status(500).json({
       message: "Failed to verify vendor service",
       error: error.message,
