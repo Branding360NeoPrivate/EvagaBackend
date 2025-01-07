@@ -287,7 +287,7 @@ const addVenderService = async (req, res) => {
 
         transformedValues[value.key] = value.items;
       });
-      service.values.forEach((value) => {
+      service?.cateringPackageVenue?.forEach((value) => {
         const key = value.key;
 
         if (key === "CoverImage") {
