@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const formSchema = new mongoose.Schema(
   {
+    title: { type: String, unique: true, default: null },
     Category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
     SubCategory: {
       type: mongoose.Schema.Types.ObjectId,
@@ -32,7 +33,9 @@ const formSchema = new mongoose.Schema(
             "array",
             "multi-select",
             "option",
-            "time"
+            "time",
+            "sub-select",
+            "sub-multi-select",
           ],
         },
         required: { type: Boolean, default: false },
