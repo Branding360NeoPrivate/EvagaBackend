@@ -53,10 +53,10 @@ const ServiceSchema = new mongoose.Schema({
     type: Map, 
     of: mongoose.Schema.Types.Mixed, 
   },
-  cateringPackageVenue: {
+  cateringPackageVenue:[ {
     type: Map, 
     of: mongoose.Schema.Types.Mixed, 
-  },
+  }],
   values: {
     type: Map, 
     of: mongoose.Schema.Types.Mixed, 
