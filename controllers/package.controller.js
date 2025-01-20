@@ -147,16 +147,16 @@ const getAllPackage = async (req, res) => {
             "serviceDetails.values.LocationType": { $in: locationTypes },
           }),
        
-          ...(priceRange.length === 2 && {
-            $or: [
-              { "serviceDetails.values.Price": { $gte: priceRange[0], $lte: priceRange[1] } },
-              { "serviceDetails.values.price": { $gte: priceRange[0], $lte: priceRange[1] } },
-              { "serviceDetails.values.Package.0.Rates": { $gte: priceRange[0], $lte: priceRange[1] } },
-              { "serviceDetails.values.OrderQuantity&Pricing.0.Rates": { $gte: priceRange[0], $lte: priceRange[1] } },
-              { "serviceDetails.values.Duration&Pricing.0.Amount": { $gte: priceRange[0], $lte: priceRange[1] } },
-              { "serviceDetails.values.SessionLength.0.Amount": { $gte: priceRange[0], $lte: priceRange[1] } },
-            ],
-          }),
+          // ...(priceRange.length === 2 && {
+          //   $or: [
+          //     { "serviceDetails.values.Price": { $gte: priceRange[0], $lte: priceRange[1] } },
+          //     { "serviceDetails.values.price": { $gte: priceRange[0], $lte: priceRange[1] } },
+          //     { "serviceDetails.values.Package.0.Rates": { $gte: priceRange[0], $lte: priceRange[1] } },
+          //     { "serviceDetails.values.OrderQuantity&Pricing.0.Rates": { $gte: priceRange[0], $lte: priceRange[1] } },
+          //     { "serviceDetails.values.Duration&Pricing.0.Amount": { $gte: priceRange[0], $lte: priceRange[1] } },
+          //     { "serviceDetails.values.SessionLength.0.Amount": { $gte: priceRange[0], $lte: priceRange[1] } },
+          //   ],
+          // }),
           
         },
       },
