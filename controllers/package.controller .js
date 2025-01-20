@@ -1,3 +1,9 @@
+import mongoose from "mongoose";
+const { Types } = mongoose;
+const ObjectId = Types.ObjectId;
+
+const isValidObjectId = (id) => ObjectId.isValid(id);
+
 import { Category } from "../modals/categoryModel.js";
 import Vender from "../modals/vendor.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
@@ -5,8 +11,26 @@ const getAllPackage = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const page = parseInt(req.query.page) || 1;
   const skip = (page - 1) * limit;
+  const searchTerm = req.query.search || "";
+  const categoryId = req.query.category || "all";
+  const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+  const eventTypes = req.query.eventTypes || [];
+  const locationTypes = req.query.locationTypes || [];
+  const priceRange = req.query.priceRange || [];
+  if (categoryId !== "all" && !isValidObjectId(categoryId)) {
+    return res.status(400).json({ error: "Invalid Category ID" });
+  }
+
   try {
     const AllPacakage = await vendorServiceListingFormModal.aggregate([
+      {
+        $match: {
+          ...(categoryId !== "all"
+            ? { Category: new ObjectId(categoryId) }
+            : {}),
+        },
+      },
+
       {
         $unwind: {
           path: "$Category",
@@ -16,11 +40,15 @@ const getAllPackage = async (req, res) => {
       {
         $lookup: {
           from: "categories",
-          localField: "Category",
-          foreignField: "_id",
+          let: { categoryId: "$Category" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$categoryId"] } } },
+            { $project: { name: 1 } },
+          ],
           as: "categoryData",
         },
       },
+
       {
         $unwind: {
           path: "$SubCategory",
@@ -30,8 +58,11 @@ const getAllPackage = async (req, res) => {
       {
         $lookup: {
           from: "subcategories",
-          localField: "SubCategory",
-          foreignField: "_id",
+          let: { subCategoryId: "$SubCategory" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$subCategoryId"] } } },
+            { $project: { name: 1 } },
+          ],
           as: "SubCategoryData",
         },
       },
@@ -41,16 +72,92 @@ const getAllPackage = async (req, res) => {
       {
         $addFields: {
           serviceDetails: "$services",
-        },
-      },
-      {
-        $addFields: {
           categoryName: "$categoryData.name",
+          SubcategoryName: "$SubCategoryData.name",
+        },
+      },
+
+      {
+        $match: {
+          $or: [
+            { AbouttheService: { $regex: searchTerm, $options: "i" } },
+            { categoryName: { $regex: searchTerm, $options: "i" } },
+            { SubcategoryName: { $regex: searchTerm, $options: "i" } },
+            { "addon.name": { $regex: searchTerm, $options: "i" } },
+            {
+              "serviceDetails.values.Title": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+            {
+              "serviceDetails.values.VenueName": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+            {
+              "serviceDetails.values.FoodTruckName": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+            {
+              "serviceDetails.values.Event Type": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+            {
+              "serviceDetails.values.Inclusions": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+            {
+              "serviceDetails.menu.someField": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+            {
+              "serviceDetails.cateringPackageVenue.someField": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+            {
+              "serviceDetails.cateringValueInVenue.someField": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+          ],
         },
       },
       {
-        $addFields: {
-          SubcategoryName: "$SubCategoryData.name",
+        $match: {
+          ...(eventTypes.length > 0 && {
+            $or: [
+              { "serviceDetails.values.Event Type": { $in: eventTypes } },
+              { "serviceDetails.values.EventType": { $in: eventTypes } },
+            ],
+          }),
+          ...(locationTypes.length > 0 && {
+            "serviceDetails.values.LocationType": { $in: locationTypes },
+          }),
+       
+          ...(priceRange.length === 2 && {
+            $or: [
+              { "serviceDetails.values.Price": { $gte: priceRange[0], $lte: priceRange[1] } },
+              { "serviceDetails.values.price": { $gte: priceRange[0], $lte: priceRange[1] } },
+              { "serviceDetails.values.Package.0.Rates": { $gte: priceRange[0], $lte: priceRange[1] } },
+              { "serviceDetails.values.OrderQuantity&Pricing.0.Rates": { $gte: priceRange[0], $lte: priceRange[1] } },
+              { "serviceDetails.values.Duration&Pricing.0.Amount": { $gte: priceRange[0], $lte: priceRange[1] } },
+              { "serviceDetails.values.SessionLength.0.Amount": { $gte: priceRange[0], $lte: priceRange[1] } },
+            ],
+          }),
+          
         },
       },
       {
@@ -66,6 +173,14 @@ const getAllPackage = async (req, res) => {
         },
       },
       {
+        $sort: {
+          "serviceDetails.values.Title": sortOrder,
+          "serviceDetails.values.FoodTruckName": sortOrder,
+          "serviceDetails.values.VenueName": sortOrder,
+        },
+      },
+ 
+      {
         $facet: {
           data: [{ $skip: skip }, { $limit: limit }],
           totalCount: [{ $count: "total" }],
@@ -74,9 +189,9 @@ const getAllPackage = async (req, res) => {
     ]);
     const allPackages = AllPacakage[0].data;
     const totalPackages = AllPacakage[0].totalCount[0]?.total || 0;
-    if (!allPackages.length) {
-      return res.status(404).json({ error: "No Packages Found" });
-    }
+    // if (!allPackages.length) {
+    //   return res.status(404).json({ error: "No Packages Found" });
+    // }
 
     return res.status(200).json({
       message: "Packages Fetched Successfully",

@@ -1,6 +1,11 @@
 import { log } from "console";
 import VendorServiceLisitingForm from "../modals/vendorServiceListingForm.modal.js";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 // const addVenderService = async (req, res) => {
 //   const { vendorId } = req.params;
 //   const {
@@ -647,26 +652,157 @@ const updateOneVenderService = async (req, res) => {
     });
   }
 };
+// const deleteVenderService = async (req, res) => {
+//   const { id } = req.params;
+
+//   try {
+//     const deletedService = await VendorServiceLisitingForm.findByIdAndDelete(
+//       id
+//     );
+
+//     if (!deletedService) {
+//       return res.status(404).json({ error: "Vendor service not found" });
+//     }
+
+//     res.status(200).json({ message: "Vendor service deleted successfully" });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Failed to delete vendor service",
+//       error: error.message,
+//     });
+//   }
+// };
+const deleteFile = (filePath) => {
+  console.log(`Attempting to delete file: ${filePath}`);
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      console.error(`Failed to delete file: ${filePath}`, err);
+    } else {
+      console.log(`Successfully deleted file: ${filePath}`);
+    }
+  });
+};
+
+const deleteMediaFiles = (mediaObject, optionalMediaKeys) => {
+  optionalMediaKeys.forEach((key) => {
+    const nestedKeys = key.split(".");
+    let mediaFiles = mediaObject;
+
+    nestedKeys.forEach((nestedKey) => {
+      mediaFiles = mediaFiles?.[nestedKey];
+    });
+
+    if (Array.isArray(mediaFiles)) {
+      mediaFiles.forEach((filePath) => {
+        const fullPath = path.join(__dirname, "..", "public", filePath);
+        console.log(`Processing media file for deletion: ${fullPath}`);
+        deleteFile(fullPath);
+      });
+    } else {
+      console.log(`No media files found for key: ${key}`);
+    }
+  });
+};
+
 const deleteVenderService = async (req, res) => {
-  const { id } = req.params;
+  const { serviceId, packageId } = req.params;
 
   try {
-    const deletedService = await VendorServiceLisitingForm.findByIdAndDelete(
-      id
-    );
+    // Find the service by ID
+    const service = await VendorServiceLisitingForm.findById(serviceId);
 
-    if (!deletedService) {
+    if (!service) {
       return res.status(404).json({ error: "Vendor service not found" });
     }
 
-    res.status(200).json({ message: "Vendor service deleted successfully" });
+    // Find the package to delete
+    const packageToDelete = service.services.find(
+      (pkg) => pkg._id.toString() === packageId
+    );
+
+    if (!packageToDelete) {
+      return res.status(404).json({ error: "Package not found in the service" });
+    }
+
+    console.log("Package to delete:", JSON.stringify(packageToDelete, null, 2));
+
+    // Delete optional media in values
+    const optionalMediaKeys = [
+      "Portfolio.photos",
+      "Portfolio.videos",
+      "3DTour",
+      "FloorPlan",
+      "RecceReport",
+      "CertificationsAndLicenses",
+      "ProductImage",
+    ];
+
+    if (packageToDelete.values) {
+      console.log("Deleting optional media from 'values':");
+      deleteMediaFiles(packageToDelete.values, optionalMediaKeys);
+    } else {
+      console.log("No 'values' object found in package.");
+    }
+
+    // Handle cateringPackageVenue
+    if (Array.isArray(packageToDelete.cateringPackageVenue)) {
+      console.log("Processing 'cateringPackageVenue':");
+
+      packageToDelete.cateringPackageVenue.forEach((venueObject, index) => {
+        console.log(`Processing venue object at index ${index}:`, JSON.stringify(venueObject, null, 2));
+
+        Object.values(venueObject).forEach((venue, keyIndex) => {
+          console.log(`Processing venue at key ${keyIndex}:`, JSON.stringify(venue, null, 2));
+
+          // Delete CoverImage in venue
+          if (venue?.CoverImage) {
+            venue.CoverImage.forEach((imagePath) => {
+              const fullPath = path.join(__dirname, "..", "public", imagePath);
+              console.log(`Deleting CoverImage for venue: ${fullPath}`);
+              deleteFile(fullPath);
+            });
+          }
+
+          // Delete optional media in venue
+          deleteMediaFiles(venue, optionalMediaKeys);
+        });
+      });
+    } else {
+      console.log("No 'cateringPackageVenue' found or it is not an array.");
+    }
+
+    // Check if this is the last package
+    if (service.services.length === 1) {
+      console.log("Last package detected, deleting the entire service.");
+      await VendorServiceLisitingForm.findByIdAndDelete(serviceId);
+
+      return res.status(200).json({
+        message: "Vendor service and its package deleted successfully",
+      });
+    }
+
+    // Otherwise, update the service by removing the specified package
+    service.services = service.services.filter(
+      (pkg) => pkg._id.toString() !== packageId
+    );
+    await service.save();
+
+    console.log("Package deleted successfully, service updated:", JSON.stringify(service, null, 2));
+
+    res.status(200).json({
+      message: "Package deleted successfully from the service",
+      data: service,
+    });
   } catch (error) {
+    console.error("Error occurred during deletion:", error);
+
     res.status(500).json({
-      message: "Failed to delete vendor service",
+      message: "Failed to delete vendor service or package",
       error: error.message,
     });
   }
 };
+
 const VerifyService = async (req, res) => {
   const { serviceId, packageid } = req.params;
   const { remarks, status } = req.body;

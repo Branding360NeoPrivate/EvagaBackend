@@ -35,9 +35,9 @@ router
 router
   .route("/update-one-service/:serviceId")
   .put( updateOneVenderService);
-router
-  .route("/delete-one-service")
-  .post(verifyJwt(["vendor", "admin"]), deleteVenderService);
+  router
+  .route("/delete-one-service/:serviceId/:packageId")
+  .delete( deleteVenderService);
 router.route("/verify-one-service/:serviceId/:packageid").post(upload().none(), verifyJwt(["admin"]), VerifyService);
 
 export default router;
