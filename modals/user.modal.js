@@ -51,6 +51,20 @@ const userSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
     },
+    Otp: {
+      type: String,
+    },
+    OtpExpires: {
+      type: Date,
+    },
+    interestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "userInterest",
+    },
+    userInterestFilled: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

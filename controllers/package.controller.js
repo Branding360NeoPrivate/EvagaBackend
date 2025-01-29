@@ -149,14 +149,79 @@ const getAllPackage = async (req, res) => {
        
           // ...(priceRange.length === 2 && {
           //   $or: [
-          //     { "serviceDetails.values.Price": { $gte: priceRange[0], $lte: priceRange[1] } },
-          //     { "serviceDetails.values.price": { $gte: priceRange[0], $lte: priceRange[1] } },
-          //     { "serviceDetails.values.Package.0.Rates": { $gte: priceRange[0], $lte: priceRange[1] } },
-          //     { "serviceDetails.values.OrderQuantity&Pricing.0.Rates": { $gte: priceRange[0], $lte: priceRange[1] } },
-          //     { "serviceDetails.values.Duration&Pricing.0.Amount": { $gte: priceRange[0], $lte: priceRange[1] } },
-          //     { "serviceDetails.values.SessionLength.0.Amount": { $gte: priceRange[0], $lte: priceRange[1] } },
+          //     {
+          //       $expr: {
+          //         $and: [
+          //           {
+          //             $gte: [
+          //               { 
+          //                 $toDouble: {
+          //                   $cond: [
+          //                     { $eq: [{ $type: "$serviceDetails.values.Price" }, "array"] }, 
+          //                     null, 
+          //                     "$serviceDetails.values.Price"
+          //                   ]
+          //                 }
+          //               },
+          //               priceRange[0]
+          //             ]
+          //           },
+          //           {
+          //             $lte: [
+          //               { 
+          //                 $toDouble: {
+          //                   $cond: [
+          //                     { $eq: [{ $type: "$serviceDetails.values.Price" }, "array"] }, 
+          //                     null, 
+          //                     "$serviceDetails.values.Price"
+          //                   ]
+          //                 }
+          //               },
+          //               priceRange[1]
+          //             ]
+          //           }
+          //         ]
+          //       }
+          //     },
+          //     {
+          //       $expr: {
+          //         $and: [
+          //           {
+          //             $gte: [
+          //               { 
+          //                 $toDouble: {
+          //                   $cond: [
+          //                     { $eq: [{ $type: "$serviceDetails.values.price" }, "array"] }, 
+          //                     null, 
+          //                     "$serviceDetails.values.price"
+          //                   ]
+          //                 }
+          //               },
+          //               priceRange[0]
+          //             ]
+          //           },
+          //           {
+          //             $lte: [
+          //               { 
+          //                 $toDouble: {
+          //                   $cond: [
+          //                     { $eq: [{ $type: "$serviceDetails.values.price" }, "array"] }, 
+          //                     null, 
+          //                     "$serviceDetails.values.price"
+          //                   ]
+          //                 }
+          //               },
+          //               priceRange[1]
+          //             ]
+          //           }
+          //         ]
+          //       }
+          //     },
+          //     // Repeat similar logic for all other fields
           //   ],
           // }),
+          
+          
           
         },
       },
