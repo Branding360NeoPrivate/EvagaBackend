@@ -190,7 +190,7 @@ const updateUserProfile = async (req, res) => {
     ) {
       const phoneExists = await User.findOne({ phoneNumber });
       if (phoneExists) {
-        return res.status(400).json({ error: "Phone number already in use" });
+        return res.status(404).json({ error: "Phone number already in use" });
       }
       user.phoneNumber = phoneNumber.trim();
     }
@@ -211,8 +211,7 @@ const updateUserProfile = async (req, res) => {
     if (name && name.trim() !== "") user.name = name.trim();
     if (faceBookLink && faceBookLink.trim() !== "")
       user.faceBookLink = faceBookLink.trim();
-    if (instagramLink && instagramLink.trim() !== "")
-      user.instagramLink = instagramLink.trim();
+
     if (password && password.trim() !== "") {
       {
         const isSamePassword = await user.isPasswordCorrect(password.trim());
@@ -228,7 +227,7 @@ const updateUserProfile = async (req, res) => {
   } catch (error) {
     console.log(error);
 
-    res.status(500).json({ error: error.message, });
+    res.status(500).json({ error: "Server error" });
   }
 };
 const getOneUserProfile = async (req, res) => {
