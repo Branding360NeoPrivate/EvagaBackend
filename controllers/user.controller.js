@@ -228,7 +228,7 @@ const updateUserProfile = async (req, res) => {
   } catch (error) {
     console.log(error);
 
-    res.status(500).json({ error: "Server error",error });
+    res.status(500).json({ error: error.message, });
   }
 };
 const getOneUserProfile = async (req, res) => {
