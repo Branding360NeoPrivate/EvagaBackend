@@ -18,6 +18,13 @@ import verifyJwt from "../middlewares/auth.middleware.js";
 import { authController } from "../controllers/forgot.controller.js";
 import { verifyController } from "../controllers/VendorVerifyController.js";
 import { saveUserInterests } from "../controllers/userInterest.controller.js";
+import {
+  addAddress,
+  deleteAddress,
+  getAllAddresses,
+  getOneAddresses,
+  updateAddress,
+} from "../controllers/userAddress.controller.js";
 const router = Router();
 
 router.route("/registerUser").post(upload().none(), registerUser);
@@ -66,4 +73,20 @@ router
 router
   .route("/set-user-new-password/:userId")
   .post(upload().none(), setNewUserPassword);
+
+router
+  .route("/add-new-address/:userId")
+  .post(verifyJwt(["user"]), upload().none(), addAddress);
+router
+  .route("/get-user-all-address/:userId")
+  .get(verifyJwt(["user"]), upload().none(), getAllAddresses);
+router
+  .route("/get-user-one-address/:addressId")
+  .get(verifyJwt(["user"]), upload().none(), getOneAddresses);
+router
+  .route("/update-user-one-address/:addressId")
+  .put(verifyJwt(["user"]), upload().none(), updateAddress);
+router
+  .route("/delete-user-one-address/:addressId")
+  .delete(verifyJwt(["user"]), upload().none(), deleteAddress);
 export default router;
