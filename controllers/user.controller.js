@@ -233,8 +233,8 @@ const updateUserProfile = async (req, res) => {
 const getOneUserProfile = async (req, res) => {
   const { userId } = req.params;
   try {
-    const user = await User.findById(userId).select(
-      "-password -createdAt -updatedAt -refreshToken -Otp -OtpExpires -interestId -userInterestFilled -_id"
+    const user = await User.findById(userId).populate("userAddresses").select(
+      "-password -createdAt -updatedAt -refreshToken -Otp -OtpExpires -interestId -userInterestFilled -_id -googleId"
     );
 
     if (!user) {
