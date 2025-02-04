@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
+import { uploadS3 } from "../middlewares/multer.middleware.js";
 import {
   addVenderService,
   authenticateYouTube,
@@ -12,7 +13,7 @@ import {
 import verifyJwt from "../middlewares/auth.middleware.js";
 const router = Router();
 router.route("/add-new-service/:vendorId").post(
-  upload("service", [
+  uploadS3("service", [
     "image/png",
     "image/jpg",
     "image/jpeg",
@@ -33,7 +34,22 @@ router
 router
   .route("/get-all-service-by-vendorId/:vendorId")
   .get(verifyJwt(["vendor", "admin"]), getAllVenderService);
-router.route("/update-one-service/:serviceId").put(updateOneVenderService);
+router.route("/update-one-service/:serviceId").post(
+  upload("service", [
+    "image/png",
+    "image/jpg",
+    "image/jpeg",
+    "image/webp",
+    "video/mp4",
+    "video/webm",
+    "video/ogg",
+    "video/mov",
+  ]).any([
+    // { name: "CoverImage", maxCount: 1 },
+    // { name: "Portfolio", maxCount: 20 },
+  ]),
+  updateOneVenderService
+);
 router
   .route("/delete-one-service/:serviceId/:packageId")
   .delete(deleteVenderService);
