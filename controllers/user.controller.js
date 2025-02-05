@@ -86,7 +86,12 @@ const loginUser = async (req, res) => {
     if (!user) {
       return res.status(400).json({ error: "Invalid credentials" });
     }
-
+    if (!user.password) {
+      return res.status(400).json({
+        error:
+          "This account does not have a password. You may have signed in using Google. Please use that method to log in.",
+      });
+    }
     // Verify the password
     const isPasswordValid = await user.isPasswordCorrect(password);
     if (!isPasswordValid) {
