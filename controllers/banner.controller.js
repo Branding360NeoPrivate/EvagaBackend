@@ -79,11 +79,11 @@ const getBannerById = async (req, res) => {
   }
 
   try {
-    const banner = await Banner.findById(bannerId);
+    const banner = await Banner.findById(bannerId).select("-BannerId -createdAt -updatedAt");
     if (!banner) {
       return res.status(404).json({ message: "Banner not found" });
     }
-    res.status(200).json({ message: "Banner Saved Successfully", banner });
+    res.status(200).json({ message: "Banner Fetched Successfully", banner });
   } catch (error) {
     res.status(500).json({ message: "Error fetching banner", error });
   }

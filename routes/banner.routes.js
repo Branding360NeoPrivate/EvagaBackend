@@ -1,6 +1,7 @@
 import {
   createBanner,
   deleteBannerById,
+  getBannerById,
   getBanners,
   getUserBanners,
   getVendorBanners,
@@ -26,7 +27,9 @@ router
 router.route("/get-all-banner").get( upload().none(), getBanners);
 router.route("/get-user-banner").get( upload().none(), getUserBanners);
 router.route("/get-vendor-banner").get( upload().none(), getVendorBanners);
-
+router
+  .route("/get-one-banner-by-id/:bannerId")
+  .get(verifyJwt(["admin"]), upload().none(), getBannerById);
 router
   .route("/update-one-banner/:bannerId")
   .put(
