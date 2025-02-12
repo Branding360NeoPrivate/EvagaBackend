@@ -330,7 +330,11 @@ const preprocessVideo = (buffer, outputPath) =>
       .outputOptions("-movflags +faststart") 
       .toFormat("mp4")
       .save(outputPath)
-      .on("end", () => resolve(fs.readFileSync(outputPath)))
+      .on("end", () => {
+        const data = fs.readFileSync(outputPath);
+        fs.unlinkSync(outputPath); // Clean up temporary file
+        resolve(data);
+      })
       .on("error", (err) => reject(err));
   });
 
