@@ -328,7 +328,6 @@ const preprocessVideo = (buffer, outputPath) =>
       .outputOptions("-crf 30")
       .outputOptions("-b:v 1M")
       .outputOptions("-movflags +faststart")
-      .outputOptions("-threads 2")
       .toFormat("mp4")
       .save(outputPath)
       .on("end", () => {
