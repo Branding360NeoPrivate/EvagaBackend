@@ -419,7 +419,7 @@ export const processAndTransferFiles = async (req, res, next) => {
         compressedBuffer = await preprocessImage(originalBuffer);
       } else if (file.mimetype.startsWith("video/")) {
         const tempFilePath = path.join(tempDir, `${Date.now()}${ext}`);
-        compressedBuffer = await preprocessVideoStream(
+        compressedBuffer = await preprocessVideo(
           originalBuffer,
           tempFilePath
         );
