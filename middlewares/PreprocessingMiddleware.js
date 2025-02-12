@@ -324,10 +324,10 @@ const preprocessVideo = (buffer, outputPath) =>
     const inputStream = Readable.from(buffer);
     ffmpeg(inputStream)
       .videoCodec("libx264")
-      .outputOptions("-preset veryfast") 
-      .outputOptions("-crf 30") 
+      .outputOptions("-preset veryfast")
+      .outputOptions("-crf 30")
       .outputOptions("-b:v 1M")
-      .outputOptions("-movflags +faststart") 
+      .outputOptions("-movflags +faststart")
       .toFormat("mp4")
       .save(outputPath)
       .on("end", () => {
@@ -337,19 +337,22 @@ const preprocessVideo = (buffer, outputPath) =>
       })
       .on("error", (err) => reject(err));
   });
-  const preprocessVideoStream = (inputBuffer, outputPath) =>
-    new Promise((resolve, reject) => {
-      const inputStream = Readable.from(inputBuffer);
-      const outputStream = fs.createWriteStream(outputPath);
-      ffmpeg(inputStream)
-        .videoCodec("libx264")
-        .outputOptions("-preset veryfast", "-crf 30", "-b:v 1M", "-movflags +faststart")
-        .toFormat("mp4")
-        .pipe(outputStream)
-        .on("finish", () => resolve(fs.readFileSync(outputPath)))
-        .on("error", reject);
-    });
-  
+const preprocessVideoStream = (inputBuffer, outputPath) =>
+  new Promise((resolve, reject) => {
+    const inputStream = Readable.from(inputBuffer);
+    const outputStream = fs.createWriteStream(outputPath);
+    ffmpeg(inputStream)
+      .videoCodec("libx264")
+      .outputOptions("-preset veryfast")
+      .outputOptions("-crf 30")
+      .outputOptions("-b:v 1M")
+      .outputOptions("-movflags +faststart")
+      .toFormat("mp4")
+      .pipe(outputStream)
+      .on("finish", () => resolve(fs.readFileSync(outputPath)))
+      .on("error", reject);
+  });
+
 // export const processAndTransferFiles = async (req, res, next) => {
 //   try {
 //     if (!req.files || req.files.length === 0) return next();
@@ -442,7 +445,10 @@ export const processAndTransferFiles = async (req, res, next) => {
         compressedBuffer = await preprocessImage(originalBuffer);
       } else if (file.mimetype.startsWith("video/")) {
         const tempFilePath = path.join(tempDir, `${Date.now()}${ext}`);
-        compressedBuffer = await preprocessVideoStream(originalBuffer, tempFilePath);
+        compressedBuffer = await preprocessVideoStream(
+          originalBuffer,
+          tempFilePath
+        );
         fs.unlinkSync(tempFilePath);
       }
 
