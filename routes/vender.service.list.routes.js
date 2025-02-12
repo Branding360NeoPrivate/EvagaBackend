@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upload } from "../middlewares/multer.middleware.js";
+import { upload, uploadAndMoveS3 } from "../middlewares/multer.middleware.js";
 import { uploadS3 } from "../middlewares/multer.middleware.js";
 import {
   addVenderService,
@@ -11,23 +11,38 @@ import {
   VerifyService,
 } from "../controllers/vendor.service.form.controller.js";
 import verifyJwt from "../middlewares/auth.middleware.js";
+import {
+  //  preprocessFiles,
+   processAndTransferFiles } from "../middlewares/PreprocessingMiddleware.js";
+    // uploadS3("service", [
+    //   "image/png",
+    //   "image/jpg",
+    //   "image/jpeg",
+    //   "image/webp",
+    //   "video/mp4",
+    //   "video/webm",
+    //   "video/ogg",
+    //   "video/mov",
+    // ]).any([]),
 const router = Router();
-router.route("/add-new-service/:vendorId").post(
-  uploadS3("service", [
-    "image/png",
-    "image/jpg",
-    "image/jpeg",
-    "image/webp",
-    "video/mp4",
-    "video/webm",
-    "video/ogg",
-    "video/mov",
-  ]).any([
-    // { name: "CoverImage", maxCount: 1 },
-    // { name: "Portfolio", maxCount: 20 },
-  ]),
-  addVenderService
-);
+router
+  .route("/add-new-service/:vendorId")
+  .post(
+    
+    uploadAndMoveS3("service", [
+      "image/png",
+      "image/jpg",
+      "image/jpeg",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+      "video/ogg",
+      "video/mov",
+    ]),
+    processAndTransferFiles,
+
+    addVenderService
+  );
 router
   .route("/get-one-service/:serviceId")
   .get(verifyJwt(["vendor", "admin"]), getOneVenderService);
