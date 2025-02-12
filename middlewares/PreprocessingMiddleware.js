@@ -352,44 +352,142 @@ const preprocessVideo = (buffer, outputPath) =>
 //       .on("finish", () => resolve(fs.readFileSync(outputPath)))
 //       .on("error", reject);
 //   });
-  const preprocessVideoStream = async (inputBuffer, outputPath) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        // Write input buffer to a temporary file
-        const tempInputPath = path.join(tempDir, `input-${Date.now()}.mp4`);
-        fs.writeFileSync(tempInputPath, inputBuffer);
+  // const preprocessVideoStream = async (inputBuffer, outputPath) => {
+  //   return new Promise(async (resolve, reject) => {
+  //     try {
+  //       // Write input buffer to a temporary file
+  //       const tempInputPath = path.join(tempDir, `input-${Date.now()}.mp4`);
+  //       fs.writeFileSync(tempInputPath, inputBuffer);
   
-        const tempOutputPath = path.join(tempDir, `output-${Date.now()}.mp4`);
+  //       const tempOutputPath = path.join(tempDir, `output-${Date.now()}.mp4`);
   
-        ffmpeg(tempInputPath)
-          .videoCodec("libx264")
-          .outputOptions("-preset veryfast")
-          .outputOptions("-crf 30")
-          .outputOptions("-b:v 1M")
-          .outputOptions("-movflags +faststart")
-          .save(tempOutputPath)
-          .on("end", () => {
-            const data = fs.readFileSync(tempOutputPath);
+  //       ffmpeg(tempInputPath)
+  //         .videoCodec("libx264")
+  //         .outputOptions("-preset veryfast")
+  //         .outputOptions("-crf 30")
+  //         .outputOptions("-b:v 1M")
+  //         .outputOptions("-movflags +faststart")
+  //         .save(tempOutputPath)
+  //         .on("end", () => {
+  //           const data = fs.readFileSync(tempOutputPath);
   
-            // Cleanup temp files
-            fs.unlinkSync(tempInputPath);
-            fs.unlinkSync(tempOutputPath);
+  //           // Cleanup temp files
+  //           fs.unlinkSync(tempInputPath);
+  //           fs.unlinkSync(tempOutputPath);
   
-            resolve(data);
-          })
-          .on("error", (err) => {
-            // Cleanup on error
-            if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
-            if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
-            reject(err);
-          });
-      } catch (err) {
-        reject(err);
-      }
-    });
-  };
+  //           resolve(data);
+  //         })
+  //         .on("error", (err) => {
+  //           // Cleanup on error
+  //           if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+  //           if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+  //           reject(err);
+  //         });
+  //     } catch (err) {
+  //       reject(err);
+  //     }
+  //   });
+  // };
   
 
+// export const processAndTransferFiles = async (req, res, next) => {
+//   try {
+//     if (!req.files || req.files.length === 0) return next();
+
+//     const privateBucket = process.env.PRIVATE_BUCKET_NAME;
+//     const publicBucket = process.env.PUBLIC_BUCKET_NAME;
+
+//     for (const file of req.files) {
+//       const ext = path.extname(file.originalname).toLowerCase();
+//       const compressedKey = `service/compressed-${Date.now()}-${
+//         file.originalname
+//       }`;
+
+//       if (!file.s3Key) {
+//         console.warn(`No S3 key for file: ${file.originalname}`);
+//         continue;
+//       }
+
+//       console.log(`Processing: ${file.s3Key}`);
+
+//       // Download original file
+//       const originalBuffer = await downloadFromS3(privateBucket, file.s3Key);
+
+//       let compressedBuffer;
+//       if (file.mimetype.startsWith("image/")) {
+//         compressedBuffer = await preprocessImage(originalBuffer);
+//       } else if (file.mimetype.startsWith("video/")) {
+//         const tempFilePath = path.join(tempDir, `${Date.now()}${ext}`);
+//         compressedBuffer = await preprocessVideo(
+//           originalBuffer,
+//           tempFilePath
+//         );
+//         fs.unlinkSync(tempFilePath);
+//       }
+
+//       // Upload compressed file to private bucket
+//       await uploadToS3(
+//         privateBucket,
+//         compressedKey,
+//         compressedBuffer,
+//         file.mimetype
+//       );
+//       console.log(`Compressed uploaded to private bucket: ${compressedKey}`);
+
+//       // Copy compressed file to public bucket
+//       await s3.send(
+//         new CopyObjectCommand({
+//           CopySource: `${privateBucket}/${compressedKey}`,
+//           Bucket: publicBucket,
+//           Key: compressedKey,
+//         })
+//       );
+//       console.log(`Copied to public bucket: ${compressedKey}`);
+
+//       // ✅ Delete original file from private bucket
+//       try {
+//         await s3.send(
+//           new DeleteObjectCommand({
+//             Bucket: privateBucket,
+//             Key: file.s3Key, // Original file
+//           })
+//         );
+//         console.log(`Deleted original file from private bucket: ${file.s3Key}`);
+//       } catch (deleteError) {
+//         console.warn(
+//           `Failed to delete original file: ${file.s3Key}`,
+//           deleteError
+//         );
+//       }
+
+//       // ✅ Delete compressed file from private bucket after copying to public
+//       try {
+//         await s3.send(
+//           new DeleteObjectCommand({
+//             Bucket: privateBucket,
+//             Key: compressedKey, // Compressed file
+//           })
+//         );
+//         console.log(
+//           `Deleted compressed file from private bucket: ${compressedKey}`
+//         );
+//       } catch (deleteError) {
+//         console.warn(
+//           `Failed to delete compressed file: ${compressedKey}`,
+//           deleteError
+//         );
+//       }
+
+//       // ✅ Store public URL for the compressed file
+//       file.s3Location = `https://${publicBucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${compressedKey}`;
+//     }
+
+//     next();
+//   } catch (error) {
+//     console.error("Error processing files:", error);
+//     return res.status(500).json({ error: "Error processing files" });
+//   }
+// };
 export const processAndTransferFiles = async (req, res, next) => {
   try {
     if (!req.files || req.files.length === 0) return next();
@@ -398,11 +496,6 @@ export const processAndTransferFiles = async (req, res, next) => {
     const publicBucket = process.env.PUBLIC_BUCKET_NAME;
 
     for (const file of req.files) {
-      const ext = path.extname(file.originalname).toLowerCase();
-      const compressedKey = `service/compressed-${Date.now()}-${
-        file.originalname
-      }`;
-
       if (!file.s3Key) {
         console.warn(`No S3 key for file: ${file.originalname}`);
         continue;
@@ -413,78 +506,36 @@ export const processAndTransferFiles = async (req, res, next) => {
       // Download original file
       const originalBuffer = await downloadFromS3(privateBucket, file.s3Key);
 
-      let compressedBuffer;
+      let finalBuffer;
       if (file.mimetype.startsWith("image/")) {
-        compressedBuffer = await preprocessImage(originalBuffer);
-      } else if (file.mimetype.startsWith("video/")) {
-        const tempFilePath = path.join(tempDir, `${Date.now()}${ext}`);
-        compressedBuffer = await preprocessVideo(
-          originalBuffer,
-          tempFilePath
-        );
-        fs.unlinkSync(tempFilePath);
+        // ✅ Process image
+        finalBuffer = await preprocessImage(originalBuffer);
+        console.log(`Image processed: ${file.s3Key}`);
+      } else {
+        // ❌ Skip video processing (upload directly)
+        finalBuffer = originalBuffer;
+        console.log(`Skipping video processing: ${file.s3Key}`);
       }
 
-      // Upload compressed file to private bucket
-      await uploadToS3(
-        privateBucket,
-        compressedKey,
-        compressedBuffer,
-        file.mimetype
-      );
-      console.log(`Compressed uploaded to private bucket: ${compressedKey}`);
+      // Upload to public bucket
+      await uploadToS3(publicBucket, file.s3Key, finalBuffer, file.mimetype);
+      console.log(`Uploaded to public bucket: ${file.s3Key}`);
 
-      // Copy compressed file to public bucket
-      await s3.send(
-        new CopyObjectCommand({
-          CopySource: `${privateBucket}/${compressedKey}`,
-          Bucket: publicBucket,
-          Key: compressedKey,
-        })
-      );
-      console.log(`Copied to public bucket: ${compressedKey}`);
-
-      // ✅ Delete original file from private bucket
+      // ✅ Delete original file from private bucket (Optional)
       try {
-        await s3.send(
-          new DeleteObjectCommand({
-            Bucket: privateBucket,
-            Key: file.s3Key, // Original file
-          })
-        );
+        await s3.send(new DeleteObjectCommand({ Bucket: privateBucket, Key: file.s3Key }));
         console.log(`Deleted original file from private bucket: ${file.s3Key}`);
       } catch (deleteError) {
-        console.warn(
-          `Failed to delete original file: ${file.s3Key}`,
-          deleteError
-        );
+        console.warn(`Failed to delete original file: ${file.s3Key}`, deleteError);
       }
 
-      // ✅ Delete compressed file from private bucket after copying to public
-      try {
-        await s3.send(
-          new DeleteObjectCommand({
-            Bucket: privateBucket,
-            Key: compressedKey, // Compressed file
-          })
-        );
-        console.log(
-          `Deleted compressed file from private bucket: ${compressedKey}`
-        );
-      } catch (deleteError) {
-        console.warn(
-          `Failed to delete compressed file: ${compressedKey}`,
-          deleteError
-        );
-      }
-
-      // ✅ Store public URL for the compressed file
-      file.s3Location = `https://${publicBucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${compressedKey}`;
+      // ✅ Store public URL for the file
+      file.s3Location = `https://${publicBucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.s3Key}`;
     }
 
     next();
   } catch (error) {
-    console.error("Error processing files:", error);
-    return res.status(500).json({ error: "Error processing files" });
+    console.error("Error transferring files:", error);
+    return res.status(500).json({ error: "Error transferring files" });
   }
 };
