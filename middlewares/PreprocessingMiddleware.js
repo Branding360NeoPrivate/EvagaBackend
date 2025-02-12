@@ -338,22 +338,58 @@ const preprocessVideo = (buffer, outputPath) =>
       })
       .on("error", (err) => reject(err));
   });
-const preprocessVideoStream = (inputBuffer, outputPath) =>
-  new Promise((resolve, reject) => {
-    const inputStream = Readable.from(inputBuffer);
-    const outputStream = fs.createWriteStream(outputPath);
-    ffmpeg(inputStream)
-      .videoCodec("libx264")
-      .outputOptions("-preset veryfast")
-      .outputOptions("-crf 30")
-      .outputOptions("-b:v 1M")
-      .outputOptions("-movflags +faststart")
-      .toFormat("mp4")
-      .pipe(outputStream)
-      .on("finish", () => resolve(fs.readFileSync(outputPath)))
-      .on("error", reject);
-  });
-
+// const preprocessVideoStream = (inputBuffer, outputPath) =>
+//   new Promise((resolve, reject) => {
+//     const inputStream = Readable.from(inputBuffer);
+//     const outputStream = fs.createWriteStream(outputPath);
+//     ffmpeg(inputStream)
+//       .videoCodec("libx264")
+//       .outputOptions("-preset veryfast")
+//       .outputOptions("-crf 30")
+//       .outputOptions("-b:v 1M")
+//       .outputOptions("-movflags +faststart")
+//       .toFormat("mp4")
+//       .pipe(outputStream)
+//       .on("finish", () => resolve(fs.readFileSync(outputPath)))
+//       .on("error", reject);
+//   });
+  const preprocessVideoStream = async (inputBuffer, outputPath) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Write input buffer to a temporary file
+        const tempInputPath = path.join(tempDir, `input-${Date.now()}.mp4`);
+        fs.writeFileSync(tempInputPath, inputBuffer);
+  
+        const tempOutputPath = path.join(tempDir, `output-${Date.now()}.mp4`);
+  
+        ffmpeg(tempInputPath)
+          .videoCodec("libx264")
+          .outputOptions("-preset veryfast")
+          .outputOptions("-crf 30")
+          .outputOptions("-b:v 1M")
+          .outputOptions("-movflags +faststart")
+          .save(tempOutputPath)
+          .on("end", () => {
+            const data = fs.readFileSync(tempOutputPath);
+  
+            // Cleanup temp files
+            fs.unlinkSync(tempInputPath);
+            fs.unlinkSync(tempOutputPath);
+  
+            resolve(data);
+          })
+          .on("error", (err) => {
+            // Cleanup on error
+            if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+            if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+            reject(err);
+          });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  };
+  
 
 export const processAndTransferFiles = async (req, res, next) => {
   try {
