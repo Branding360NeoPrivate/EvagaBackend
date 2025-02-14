@@ -14,6 +14,7 @@ import createNewService from "./routes/vender.service.list.routes.js";
 import wishlist from "./routes/wishlist.routes.js";
 import coupons from "./routes/coupons.routes.js";
 import categoryFee from "./routes/categoryFee.routes.js";
+import cart from "./routes/cart.routes.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -119,6 +120,7 @@ app.use("/api/v1/packages", packagesRoute);
 app.use("/api/v1/wishlist", wishlist);
 app.use("/api/v1/coupons", coupons);
 app.use("/api/v1/categoryFee", categoryFee);
+app.use("/api/v1/cart", cart);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });
