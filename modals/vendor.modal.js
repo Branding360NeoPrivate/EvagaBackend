@@ -38,6 +38,11 @@ const vendeerSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    userName: {
+      type: String,
+      default: null,
+      // required: true,
+    },
     location: {
       type: String,
     },
@@ -67,6 +72,7 @@ const vendeerSchema = new mongoose.Schema(
     },
     termsAccepted: { type: Boolean, default: false },
     termsAcceptedAt: { type: Date },
+    verificationStatus: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
