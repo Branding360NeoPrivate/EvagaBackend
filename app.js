@@ -15,6 +15,7 @@ import wishlist from "./routes/wishlist.routes.js";
 import coupons from "./routes/coupons.routes.js";
 import categoryFee from "./routes/categoryFee.routes.js";
 import cart from "./routes/cart.routes.js";
+import GstPercentage from "./routes/gstPercentage.routes.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -91,10 +92,12 @@ app.get("/video/stream/*", (req, res) => {
         "Content-Type": "video/mp4",
       });
 
-      const stream = fs.createReadStream(filePath, { start: chunkStart, end: chunkEnd });
+      const stream = fs.createReadStream(filePath, {
+        start: chunkStart,
+        end: chunkEnd,
+      });
       stream.pipe(res);
     } else {
-
       res.writeHead(200, {
         "Content-Length": fileSize,
         "Content-Type": "video/mp4",
@@ -105,7 +108,6 @@ app.get("/video/stream/*", (req, res) => {
     }
   });
 });
-
 
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/vender", venderRoutes);
@@ -121,6 +123,7 @@ app.use("/api/v1/wishlist", wishlist);
 app.use("/api/v1/coupons", coupons);
 app.use("/api/v1/categoryFee", categoryFee);
 app.use("/api/v1/cart", cart);
+app.use("/api/v1/gstPercentage", GstPercentage);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });
