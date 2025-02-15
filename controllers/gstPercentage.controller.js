@@ -78,7 +78,7 @@ const getAllGstCategories = async (req, res) => {
     const categories = await GstCategory.find();
 
     if (categories.length === 0) {
-      return res.status(200).json({ message: "No categories found" });
+      return res.status(404).json({ message: "No categories found" });
     }
     const activeCategories = categories.map((category) => {
       const latestRate = category.gstRates
