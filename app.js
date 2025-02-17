@@ -20,6 +20,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { updateVendors } from "./utils/generateVendorUserName.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
@@ -56,6 +57,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+updateVendors();
 // removed cors
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
