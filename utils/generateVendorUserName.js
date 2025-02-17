@@ -1,6 +1,6 @@
 import Vender from "../modals/vendor.modal.js";
 
-const generateUsername = async (name, date, VendorModel) => {
+export const generateUsername = async (name, date, VendorModel) => {
   const nameParts = name.split(" ");
   const firstName = nameParts[0] || "";
   const lastName = nameParts[1] || "";
@@ -12,11 +12,22 @@ const generateUsername = async (name, date, VendorModel) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = String(date.getFullYear()).slice(-2);
 
-  let username = nameAbbreviation + month + year;
+  const baseUsername = nameAbbreviation + month + year;
+
+  const existingUsernames = await VendorModel.find({
+    userName: { $regex: `^${baseUsername}` },
+  }).select("userName");
+
+  // Extract and parse any numeric suffixes
+  const usernameSet = new Set(
+    existingUsernames.map((vendor) => vendor.userName)
+  );
 
   let counter = 1;
-  while (await VendorModel.findOne({ username })) {
-    username = nameAbbreviation + month + year + counter;
+  let username = baseUsername;
+
+  while (usernameSet.has(username)) {
+    username = baseUsername + counter;
     counter++;
   }
 
@@ -27,7 +38,6 @@ export const updateVendors = async () => {
   try {
     const vendors = await Vender.find();
     console.log(vendors);
-    
 
     for (const vendor of vendors) {
       if (!vendor.userName) {
@@ -44,5 +54,3 @@ export const updateVendors = async () => {
     console.error("Error updating vendors:", err);
   }
 };
-
-

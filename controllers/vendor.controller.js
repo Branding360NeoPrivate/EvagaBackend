@@ -67,6 +67,12 @@ const registerVendor = async (req, res) => {
       yearOfExperience,
     });
     await newUser.save();
+    const date = newUser.createdAt; 
+    const username = await generateUsername(newUser.name, date, Vender);
+
+
+    newUser.userName = username;
+    await newUser.save();
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
       newUser._id,
       "vendor"
