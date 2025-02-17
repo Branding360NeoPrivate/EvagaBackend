@@ -7,6 +7,7 @@ import BookingCalender from "../modals/booking.modal.js";
 import BusinessDetails from "../modals/Business.modal.js";
 import { generateUniqueId } from "../utils/generateUniqueId.js";
 import { calculateProfileCompletion } from "../utils/calculateVendorProfilePercentage.js";
+import { generateUsername } from "../utils/generateVendorUserName.js";
 const options = {
   // httpOnly: true,
   // secure: true,
