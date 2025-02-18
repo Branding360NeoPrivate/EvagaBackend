@@ -21,6 +21,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { updateVendors } from "./utils/generateVendorUserName.js";
+import waitlist from "./routes/waitlist.routes.js";
+import feedback from "./routes/feedback.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
@@ -126,6 +128,8 @@ app.use("/api/v1/coupons", coupons);
 app.use("/api/v1/categoryFee", categoryFee);
 app.use("/api/v1/cart", cart);
 app.use("/api/v1/gstPercentage", GstPercentage);
+app.use("/api/v1/waitlist", waitlist);
+app.use("/api/v1/feedback", feedback);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });
