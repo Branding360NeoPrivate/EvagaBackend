@@ -12,7 +12,7 @@ const getUserOrder = async (req, res) => {
     const userOrders = await OrderModel.find({ userId });
 
     if (!userOrders || userOrders.length === 0) {
-      return res.status(404).json({ message: "No orders found for this user" });
+      return res.status(200).json({ message: "No orders found for this user" });
     }
 
     // Separate items in each order into individual objects
