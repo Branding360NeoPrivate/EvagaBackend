@@ -27,6 +27,8 @@ import createorderRoutes from "./routes/createOrder.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import validateRoutes from "./routes/validateOrder.routes.js";
 import getPaymentDeatils from "./routes/getFullPaymentDetails.routes.js";
+import getUserOrder from "./routes/getUserOrder.routes.js";
+import getVendorOrder from "./routes/getVendororder.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
@@ -139,6 +141,8 @@ app.use("/api/v1/waitlist", waitlist);
 app.use("/api/v1/feedback", feedback);
 app.use("/api/v1/validateOrder", validateRoutes);
 app.use("/api/v1/getPaymentDetails", getPaymentDeatils);
+app.use("/api/v1/userOrder", getUserOrder);
+app.use("/api/v1/vendorOrder", getVendorOrder);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });
