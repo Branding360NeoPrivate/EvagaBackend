@@ -14,27 +14,31 @@ const CartSchema = new mongoose.Schema(
           ref: "Service",
           required: true,
         },
-        serviceName: {
+        packageId: {
           type: String,
           required: true,
         },
-        basePrice: {
+        vendorId: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+          ref: "Vender",
+        },
+        date: { type: Date },
+        time: { type: String },
+        pincode: { type: Number },
+        defaultPrice: {
           type: Number,
           required: true,
         },
         selectedSessions: [
           {
-            sessionId: {
-              type: String,
-              required: true,
-            },
             sessionName: {
               type: String,
-              required: true,
+              // required: true,
             },
             sessionPrice: {
               type: Number,
-              required: true,
+              // required: true,
             },
             quantity: {
               type: Number,
@@ -43,7 +47,7 @@ const CartSchema = new mongoose.Schema(
             },
             sessionTotalPrice: {
               type: Number,
-              required: true,
+              // required: true,
             },
           },
         ],
@@ -51,15 +55,15 @@ const CartSchema = new mongoose.Schema(
           {
             addonId: {
               type: String,
-              required: true,
+              // required: true,
             },
             addonName: {
               type: String,
-              required: true,
+              // required: true,
             },
             addonPrice: {
               type: Number,
-              required: true,
+              // required: true,
             },
           },
         ],
@@ -69,6 +73,10 @@ const CartSchema = new mongoose.Schema(
         },
       },
     ],
+    appliedCoupon: {
+      code: { type: String, default: null },
+      discount: { type: Number, default: 0 },
+    },
   },
   { timestamps: true }
 );

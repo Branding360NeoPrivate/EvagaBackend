@@ -63,36 +63,14 @@ const createOrder = async (req, res) => {
     const discount = cart.appliedCoupon ? cart.appliedCoupon.discount : 0;
 
     // Final Total Amount After Applying Discount
-    const totalAmount = Math.max(
+    const totalAmount = Math.floor(
       totalOfCart + platformFee + platformGstAmount + totalGst - discount,
       0
     );
+    console.log(totalAmount);
 
-    // Create Cashfree Order
-    // const orderId = `ORD_${Date.now()}`;
-
-    // Create Cashfree order
-    // const request = {
-    //   order_amount: totalAmount,
-    //   order_currency: "INR",
-    //   order_id: orderId,
-    //   customer_details: {
-    //     customer_id: userId,
-    //     customer_email: "test@example.com",
-    //     customer_phone: "9999999999",
-    //   },
-    //   order_meta: {
-    //     return_url: `http://localhost:3000/orderStatus?order_id={order_id}`,
-    //   },
-    // };
-
-    // const cashfreeResponse = await Cashfree.PGCreateOrder(
-    //   "2022-09-01",
-    //   request
-    // );
-    // 1️⃣ Create order on Razorpay
     const options = {
-      amount: totalAmount * 100,
+      amount: Number(totalAmount) * 100,
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
       payment_capture: 1,
