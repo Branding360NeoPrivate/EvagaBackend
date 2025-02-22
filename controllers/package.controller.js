@@ -7,7 +7,7 @@ const isValidObjectId = (id) => ObjectId.isValid(id);
 import { Category } from "../modals/categoryModel.js";
 import Vender from "../modals/vendor.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
-import { getPreSignedUrl } from "../utils/getPreSignedUrl.js";
+import CategoryFee from "../modals/categoryFee.modal.js";
 const getAllPackage = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const page = parseInt(req.query.page) || 1;
@@ -49,7 +49,21 @@ const getAllPackage = async (req, res) => {
           as: "categoryData",
         },
       },
-
+      {
+        $lookup: {
+          from: "categoryfees", 
+          localField: "Category",
+          foreignField: "categoryId",
+          as: "categoryFee",
+        },
+      },
+      {
+        $addFields: {
+          feesPercentage: {
+            $ifNull: [{ $arrayElemAt: ["$categoryFee.feesPercentage", 0] }, 12], 
+          },
+        },
+      },
       {
         $unwind: {
           path: "$SubCategory",
@@ -70,6 +84,7 @@ const getAllPackage = async (req, res) => {
       {
         $unwind: "$services",
       },
+
       {
         $addFields: {
           serviceDetails: "$services",
@@ -77,10 +92,218 @@ const getAllPackage = async (req, res) => {
           SubcategoryName: "$SubCategoryData.name",
         },
       },
+      {
+        $addFields: {
+          "serviceDetails.values": {
+            $mergeObjects: [
+              "$serviceDetails.values",
+              {
+                "Duration&Pricing": {
+                  $map: {
+                    input: {
+                      $ifNull: ["$serviceDetails.values.Duration&Pricing", []],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Amount: {
+                            $multiply: [
+                              { $toDouble: "$$item.Amount" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                SessionLength: {
+                  $map: {
+                    input: {
+                      $ifNull: ["$serviceDetails.values.SessionLength", []],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Amount: {
+                            $multiply: [
+                              { $toDouble: "$$item.Amount" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                "SessionLength&Pricing": {
+                  $map: {
+                    input: {
+                      $ifNull: [
+                        "$serviceDetails.values.SessionLength&Pricing",
+                        [],
+                      ],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Amount: {
+                            $multiply: [
+                              { $toDouble: "$$item.Amount" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                QtyPricing: {
+                  $map: {
+                    input: {
+                      $ifNull: ["$serviceDetails.values.QtyPricing", []],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Rates: {
+                            $multiply: [
+                              { $toDouble: "$$item.Rates" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                Price: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.Price", null] },
+                    then: {
+                      $multiply: [
+                        { $toDouble: "$serviceDetails.values.Price" },
+                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                      ],
+                    },
+                    else: "$serviceDetails.values.Price",
+                  },
+                },
+                price: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.price", null] },
+                    then: {
+                      $multiply: [
+                        { $toDouble: "$serviceDetails.values.price" },
+                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                      ],
+                    },
+                    else: "$serviceDetails.values.price",
+                  },
+                },
+                Pricing: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.Pricing", null] },
+                    then: {
+                      $multiply: [
+                        { $toDouble: "$serviceDetails.values.Pricing" },
+                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                      ],
+                    },
+                    else: "$serviceDetails.values.Pricing",
+                  },
+                },
+                Package: {
+                  $map: {
+                    input: { $ifNull: ["$serviceDetails.values.Package", []] },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Rates: {
+                            $multiply: [
+                              { $toDouble: "$$item.Rates" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                "OrderQuantity&Pricing": {
+                  $map: {
+                    input: {
+                      $ifNull: [
+                        "$serviceDetails.values.OrderQuantity&Pricing",
+                        [],
+                      ],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Rates: {
+                            $multiply: [
+                              { $toDouble: "$$item.Rates" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
 
       {
         $match: {
           "serviceDetails.status": true,
+
           $or: [
             { AbouttheService: { $regex: searchTerm, $options: "i" } },
             { categoryName: { $regex: searchTerm, $options: "i" } },
@@ -285,11 +508,11 @@ const getAllPackage = async (req, res) => {
 };
 const getOnepackage = async (req, res) => {
   const { serviceId, packageid } = req.params;
-  if (!(serviceId || packageid)) {
-    return res
-      .status(404)
-      .json({ error: "service Id and package Id is required" });
+
+  if (!serviceId || !packageid) {
+    return res.status(404).json({ error: "Service ID and Package ID are required" });
   }
+
   try {
     const verifiedService = await vendorServiceListingFormModal
       .findById(serviceId)
@@ -298,28 +521,94 @@ const getOnepackage = async (req, res) => {
     if (!verifiedService) {
       return res.status(404).json({ error: "Vendor service not found" });
     }
-    verifiedService.services = verifiedService.services.filter(
+
+    // Find the specific package
+    const packageDetails = verifiedService.services.find(
       (pkg) => pkg._id.toString() === packageid
     );
-    const getVendorDetails = await Vender.findById(
-      verifiedService?.vendorId
-    ).select("userName bio -_id");
-    const category = await Category.findById(verifiedService?.Category).select(
-      "name -_id"
-    );
+
+    if (!packageDetails) {
+      return res.status(404).json({ error: "Package not found" });
+    }
+
+    if (!packageDetails.values || !(packageDetails.values instanceof Map)) {
+      console.log("No values Map found in packageDetails!");
+      packageDetails.values = new Map(); // Ensure it's a Map object
+    }
+
+    // Fetch category fee from categoryfees modal
+    let categoryFee = 12; // Default 12% increase
+    const categoryFeeData = await CategoryFee.findOne({ categoryId: verifiedService.Category }).select("feesPercentage");
+console.log(categoryFeeData,'categoryFeeData',categoryFeeData?.feesPercentage);
+
+    if (categoryFeeData?.feesPercentage) {
+      categoryFee = categoryFeeData.feesPercentage;
+    }
+
+    const applyIncrease = (value, key) => {
+      if (!value || isNaN(value)) {
+        console.log(`Skipping update for ${key}, value:`, value);
+        return value;
+      }
+      const updatedValue = (parseFloat(value) * (1 + categoryFee / 100)).toFixed(2);
+      console.log(`Updated ${key}: ${value} -> ${updatedValue}`);
+      return updatedValue;
+    };
+
+    const priceKeys = ["Price", "price", "Pricing"];
+    priceKeys.forEach((key) => {
+      if (packageDetails.values.has(key)) {
+        packageDetails.values.set(key, applyIncrease(packageDetails.values.get(key), key));
+      } else {
+        console.log(`${key} is missing from packageDetails.values`);
+      }
+    });
+
+    const updateArray = (key) => {
+      if (packageDetails.values.has(key)) {
+        const updatedArray = packageDetails.values.get(key)?.map((item, index) => ({
+          ...item,
+          Amount: applyIncrease(item.Amount, `${key}[${index}].Amount`),
+        }));
+        packageDetails.values.set(key, updatedArray);
+      }
+    };
+    const fieldsToUpdate = [
+      "Package",
+      "OrderQuantity&Pricing",
+      "Duration&Pricing",
+      "SessionLength",
+      "SessionLength&Pricing",
+      "QtyPricing",
+      "AddOns",
+    ];
+
+    fieldsToUpdate.forEach(updateArray);
+
+    verifiedService.services = [packageDetails];
+
+
+    const getVendorDetails = await Vender.findById(verifiedService?.vendorId).select("userName bio -_id");
+    const category = await Category.findById(verifiedService?.Category).select("name -_id");
 
     res.status(200).json({
-      message: "Vendor service Fetched successfully",
-      data: verifiedService,
+      message: "Package updated successfully",
+      data: verifiedService, 
       getVendorDetails: getVendorDetails,
       category: category,
     });
+
   } catch (error) {
     res.status(500).json({
-      message: "Failed to verify vendor service",
+      message: "Failed to fetch package details",
       error: error.message,
     });
   }
 };
+
+
+
+
+
 
 export { getAllPackage, getOnepackage };
