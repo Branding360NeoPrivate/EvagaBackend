@@ -112,8 +112,8 @@ const getCart = async (req, res) => {
       0
     );
     const platformFee = Math.min((totalOfCart * 2) / 100, 1000);
-    const gstPercentage = 18;
-    const platformGstAmount = (platformFee * gstPercentage) / 100;
+    const gstPercentagePlatform = 18; // Default GST percentage for platform fee
+    const platformGstAmount = (platformFee * gstPercentagePlatform) / 100;
 
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode });
@@ -124,16 +124,12 @@ const getCart = async (req, res) => {
 
       const now = new Date();
       if (now < coupon.startDate || now > coupon.endDate) {
-        return res
-          .status(400)
-          .json({ message: "Coupon is not valid at this time." });
+        return res.status(400).json({ error: "Coupon Expired" });
       }
 
       const userUsage = coupon.usersUsed.get(userId);
       if (userUsage && userUsage.usageCount >= coupon.usageLimit) {
-        return res
-          .status(400)
-          .json({ message: "Usage limit reached for this coupon." });
+        return res.status(400).json({ error: "Usage limit reached for this coupon." });
       }
 
       if (coupon.discountAmount) {
@@ -148,14 +144,13 @@ const getCart = async (req, res) => {
       discount = Math.min(discount, totalOfCart);
       appliedCoupon = couponCode;
 
-      // Save coupon application in cart (so it persists before order creation)
       cart.appliedCoupon = {
         code: couponCode,
         discount,
       };
       await cart.save();
 
-      // Update coupon usage
+  
       coupon.usersUsed.set(userId, {
         userId,
         usageCount: (userUsage?.usageCount || 0) + 1,
@@ -168,6 +163,9 @@ const getCart = async (req, res) => {
         const service = await vendorServiceListingFormModal.findById(
           item.serviceId
         );
+
+        let gstPercentage = 18; // Default GST percentage
+        let gstAmount = 0;
 
         if (service) {
           const matchingPackage = service.services.find(
@@ -187,14 +185,13 @@ const getCart = async (req, res) => {
             const gstCategory = await GstCategory.findOne({
               categoryId: service.Category,
             });
-            let gstPercentage = 18;
             if (gstCategory && gstCategory.gstRates.length > 0) {
               const activeGst =
                 gstCategory.gstRates[gstCategory.gstRates.length - 1];
               gstPercentage = activeGst.gstPercentage || 18;
             }
 
-            const gstAmount = (item.totalPrice * gstPercentage) / 100;
+            gstAmount = (item.totalPrice * gstPercentage) / 100;
 
             return {
               ...item._doc,
@@ -205,7 +202,8 @@ const getCart = async (req, res) => {
                 VenueName,
                 FoodTruckName,
               },
-              gstAmount,
+              gstPercentage, // Appending GST percentage
+              gstAmount, // Appending GST amount
             };
           }
         }
@@ -213,7 +211,8 @@ const getCart = async (req, res) => {
         return {
           ...item._doc,
           packageDetails: null,
-          gstAmount: 0,
+          gstPercentage, // Default GST percentage
+          gstAmount, // Default GST amount
         };
       })
     );
@@ -245,6 +244,8 @@ const getCart = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
 
 const updateCartItem = async (req, res) => {
   try {

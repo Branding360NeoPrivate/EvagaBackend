@@ -25,7 +25,7 @@ const createOrder = async (req, res) => {
     const gstPercentage = 18;
     const platformGstAmount = (platformFee * gstPercentage) / 100;
 
-    // Recalculate GST for each item
+    // Recalculate GST for each item and include date, time, and pincode
     const updatedItems = await Promise.all(
       cart.items.map(async (item) => {
         const service = await vendorServiceListingFormModal.findById(
@@ -38,7 +38,7 @@ const createOrder = async (req, res) => {
             categoryId: service.Category,
           });
 
-          let gstRate = 18; // Default GST 18%
+          let gstRate = 18;
           if (gstCategory && gstCategory.gstRates.length > 0) {
             const activeGst =
               gstCategory.gstRates[gstCategory.gstRates.length - 1];
@@ -48,26 +48,29 @@ const createOrder = async (req, res) => {
           gstAmount = (item.totalPrice * gstRate) / 100;
         }
 
-        return { ...item._doc, gstAmount };
+        return {
+          ...item._doc,
+          gstAmount,
+          gstPercentage,
+          date: item.date,
+          time: item.time,
+          pincode: item.pincode,
+        };
       })
     );
 
-    // Recalculate Total GST
     const totalGst = updatedItems.reduce(
       (total, item) => total + item.gstAmount,
       0
     );
 
-    // Get Applied Coupon & Discount from Cart
     const appliedCoupon = cart.appliedCoupon ? cart.appliedCoupon.code : null;
     const discount = cart.appliedCoupon ? cart.appliedCoupon.discount : 0;
 
-    // Final Total Amount After Applying Discount
     const totalAmount = Math.floor(
       totalOfCart + platformFee + platformGstAmount + totalGst - discount,
       0
     );
-    console.log(totalAmount);
 
     const options = {
       amount: Number(totalAmount) * 100,
@@ -81,7 +84,7 @@ const createOrder = async (req, res) => {
     // Save Order to DB
     const newOrder = await OrderModel.create({
       userId,
-      items: updatedItems,
+      items: updatedItems, // Includes date, time, and pincode for each item
       totalAmount,
       platformFee,
       platformGstAmount,
@@ -89,13 +92,17 @@ const createOrder = async (req, res) => {
       appliedCoupon,
       discount,
       razorPayOrderId: order?.id,
+      OrderId: `ORDER-${new Date()
+        .toISOString()
+        .replace(/[-:.TZ]/g, "")}-${Math.random()
+        .toString(36)
+        .substring(2, 8)
+        .toUpperCase()}`,
       status: "PENDING",
     });
 
     res.json({
       success: true,
-      // payment_session_id: cashfreeResponse?.data?.payment_session_id,
-      // order_id: cashfreeResponse?.data?.order_id,
       order_id: order?.id,
       amount: order?.amount,
       currency: "INR",
