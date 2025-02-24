@@ -3,11 +3,22 @@ import GstCategory from "../modals/gstCategory.modal.js";
 import Cart from "../modals/Cart.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
 import { razorpay } from "../config/gatewayConfig.js";
+import userAddress from "../modals/address.modal.js";
 const createOrder = async (req, res) => {
   try {
     const { userId } = req.params;
+    let { numberOfParts } = req.params; // Take number of parts from client
+    console.log(numberOfParts);
 
+    // Ensure numberOfParts is valid (1, 2, or 3). Default to 1 if invalid.
+    numberOfParts = [1, 2, 3].includes(Number(numberOfParts))
+      ? Number(numberOfParts)
+      : 1;
     const cart = await Cart.findOne({ userId });
+    const selectedAddress = await userAddress.findOne({
+      userId: userId,
+      selected: true,
+    });
 
     if (!cart) {
       return res.status(400).json({ success: false, message: "Cart is empty" });
@@ -71,9 +82,35 @@ const createOrder = async (req, res) => {
       totalOfCart + platformFee + platformGstAmount + totalGst - discount,
       0
     );
+    let partialPayments = [];
+    let leftAmount = totalAmount;
 
+    if (numberOfParts > 1) {
+      const partAmount = Math.floor(totalAmount / numberOfParts);
+      let remainder = totalAmount % numberOfParts;
+
+      // Generate parts with equal amounts, adjusting the last part for the remainder
+      partialPayments = Array.from({ length: numberOfParts }, (_, index) => {
+        const isPaid = index === 0;
+        const amount = isPaid ? partAmount + remainder : partAmount;
+        remainder = 0; // Ensure remainder is only added to the first part
+
+        return {
+          partNumber: index + 1,
+          amount,
+          dueDate: new Date(
+            Date.now() + index * 30 * 24 * 60 * 60 * 1000 // Due dates every 30 days
+          ),
+          status: isPaid ? "PAID" : "PENDING",
+        };
+      });
+
+      leftAmount = totalAmount - partialPayments[0].amount;
+    }
     const options = {
-      amount: Number(totalAmount) * 100,
+      amount:
+        Number(numberOfParts > 1 ? partialPayments[0].amount : totalAmount) *
+        100,
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
       payment_capture: 1,
@@ -81,10 +118,9 @@ const createOrder = async (req, res) => {
 
     const order = await razorpay.orders.create(options);
 
-    // Save Order to DB
     const newOrder = await OrderModel.create({
       userId,
-      items: updatedItems, // Includes date, time, and pincode for each item
+      items: updatedItems,
       totalAmount,
       platformFee,
       platformGstAmount,
@@ -99,6 +135,17 @@ const createOrder = async (req, res) => {
         .substring(2, 8)
         .toUpperCase()}`,
       status: "PENDING",
+      address: {
+        name: selectedAddress.Name,
+        address: selectedAddress.address,
+        addressLine1: selectedAddress.addressLine1,
+        addressLine2: selectedAddress.addressLine2,
+        state: selectedAddress.state,
+        pinCode: selectedAddress.pinCode,
+      },
+      partialPayments,
+      paymentStatus: numberOfParts > 1 ? "PENDING" : "SUCCESS",
+      leftAmount,
     });
 
     res.json({

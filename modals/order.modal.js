@@ -12,7 +12,11 @@ const OrderSchema = new mongoose.Schema(
         vendorId: { type: mongoose.Schema.Types.ObjectId, ref: "Vendor" },
         serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },
         packageId: { type: String },
+        date: { type: Date },
+        time: { type: String },
+        pincode: { type: Number },
         totalPrice: { type: Number, required: true },
+        gstPercentage: { type: Number, required: true },
         gstAmount: { type: Number, default: 0 },
         selectedSessions: [
           {
@@ -22,6 +26,13 @@ const OrderSchema = new mongoose.Schema(
             sessionTotalPrice: Number,
           },
         ],
+        orderStatus: {
+          type: String,
+          enum: ["new", "confirmed", "active", "completed", "cancelled"],
+          default: "new",
+        },
+        otp: { type: String },
+        otpExpiry: { type: Date },
       },
     ],
     totalAmount: { type: Number, required: true },
@@ -34,6 +45,15 @@ const OrderSchema = new mongoose.Schema(
     },
     // cashfreeOrderId: { type: String, required: true },
     razorPayOrderId: { type: String, required: true },
+    OrderId: { type: String, required: true },
+    address: {
+      name: { type: String, required: true },
+      address: { type: String, required: true },
+      addressLine1: { type: String, required: false },
+      addressLine2: { type: String, required: false },
+      state: { type: String, required: true },
+      pinCode: { type: Number, required: true },
+    },
     paymentStatus: {
       type: String,
       enum: ["PENDING", "SUCCESS", "FAILED"],
@@ -44,11 +64,14 @@ const OrderSchema = new mongoose.Schema(
       enum: ["PENDING", "CONFIRMED", "CANCELLED"],
       default: "PENDING",
     },
-    orderStatus: {
-      type: String,
-      enum: ["new", "confirmed", "active", "completed", "cancelled"],
-      default: "new",
-    },
+    partialPayments: [
+      {
+        partNumber: { type: Number, required: true },
+        amount: { type: Number, required: true },
+        dueDate: { type: Date, required: true },
+        status: { type: String, enum: ["PENDING", "PAID"], default: "PENDING" },
+      },
+    ],
   },
   { timestamps: true }
 );

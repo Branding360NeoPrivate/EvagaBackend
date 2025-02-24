@@ -2,30 +2,59 @@ import OrderModel from "../modals/order.modal.js";
 
 
 
-// Helper function to filter orders based on item-level status
+// Helper function to filter and process orders based on item-level status
 const filterOrdersByItemStatus = async (orderStatus) => {
   const orders = await OrderModel.find().populate({
     path: "userId",
     select: "name email phone",
   });
 
-  const filteredOrders = [];
-  for (const order of orders) {
+  const filteredOrders = orders.map((order) => {
+    // Filter items based on the given status
     const itemsMatchingStatus = order.items.filter(
       (item) => item.orderStatus === orderStatus
     );
 
     if (itemsMatchingStatus.length > 0) {
-      filteredOrders.push({
-        ...order.toObject(),
-        items: itemsMatchingStatus,
-      });
+      // Recalculate totalAmount and totalGst
+      const totalAmount = itemsMatchingStatus.reduce(
+        (sum, item) => sum + (item.totalPrice || 0),
+        0
+      );
+      const totalGst = itemsMatchingStatus.reduce(
+        (sum, item) => sum + (item.gstAmount || 0),
+        0
+      );
+
+      // Divide platformFee and platformGstAmount equally among items
+      const platformFeePerItem =
+        (order.platformFee || 0) / order.items.length;
+      const platformGstPerItem =
+        (order.platformGstAmount || 0) / order.items.length;
+
+      // Return the processed order
+      return {
+        OrderId: order.OrderId,
+        userId: order.userId,
+        createdAt: order.createdAt,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+        totalAmount,
+        totalGst,
+        items: itemsMatchingStatus.map((item) => ({
+          ...item.toObject(),
+          platformFee: platformFeePerItem,
+          platformGstAmount: platformGstPerItem,
+        })),
+      };
     }
-  }
 
-  return filteredOrders;
-};
+    return null;
+  });
 
+  // Remove null values for orders without matching items
+  return filteredOrders.filter((order) => order !== null);
+}
 // Get all new orders
 export const getAllNewOrder = async (req, res) => {
   try {
