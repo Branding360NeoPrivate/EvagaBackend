@@ -2,7 +2,7 @@ import { google } from "googleapis";
 import { JWT } from "google-auth-library";
 import fs from "fs";
 
-import key from "../calendar-452010-bb6c9bbc15ce.json" assert { type: "json" };
+// import key from "../calendar-452010-bb6c9bbc15ce.json" assert { type: "json" };
 
 
 const auth = new JWT({
