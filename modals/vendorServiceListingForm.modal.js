@@ -55,7 +55,7 @@ const ServiceSchema = new mongoose.Schema({
   },
   sku: {
     type: String,
-    required: true,
+    // required: true,
     unique: true,
     minlength: 6,
     maxlength: 6,
