@@ -31,6 +31,9 @@ const OrderSchema = new mongoose.Schema(
           enum: ["new", "confirmed", "active", "completed", "cancelled"],
           default: "new",
         },
+        cancelReason: {
+          type: String,
+        },
         otp: { type: String },
         otpExpiry: { type: Date },
       },

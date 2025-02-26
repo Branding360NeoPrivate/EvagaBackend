@@ -17,6 +17,9 @@ const couponSchema = new Schema(
       ref: "Vender",
       default: null,
     },
+    selectedpackage: {
+      type: String,
+    },
     startDate: {
       type: Date,
       required: true,
@@ -51,7 +54,6 @@ const couponSchema = new Schema(
       type: Map,
       of: {
         userId: { type: String, required: true },
-        email: { type: String, required: true },
         usageCount: { type: Number, default: 0 },
       },
       default: {},

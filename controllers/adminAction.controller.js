@@ -6,15 +6,15 @@ import BusinessDetails from "../modals/Business.modal.js";
 import { generateUniqueId } from "../utils/generateUniqueId.js";
 import mongoose from "mongoose";
 import path from "path";
+import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
 const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const page = parseInt(req.query.page) || 1;
   const skip = (page - 1) * limit;
   const searchTerm = req.query.search || "";
-  const filter = req.query.filter || "All Vendors"; 
+  const filter = req.query.filter || "All Vendors";
 
   try {
-
     const matchStage = {
       $and: [
         filter === "Verified Vendors"
@@ -132,9 +132,7 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
 
     const vendorsWithServiceData = await Vender.aggregate(pipeline);
 
-    const totalVendors = await Vender.countDocuments(
-      searchTerm || filter !== "all" ? matchStage : {}
-    );
+    const totalVendors = await Vender.countDocuments();
 
     const enrichedVendors = vendorsWithServiceData.map((vendor) => {
       const profileCompletion = calculateProfileCompletion(vendor);
@@ -537,7 +535,7 @@ const getVendorByNameOrVendorUserName = async (req, res) => {
         },
       },
       {
-        $sort: { createdAt: -1 }, 
+        $sort: { createdAt: -1 },
       },
     ]);
 
@@ -546,6 +544,41 @@ const getVendorByNameOrVendorUserName = async (req, res) => {
     }
 
     res.status(200).json({ vendors });
+  } catch (error) {
+    console.error("Server error:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
+  }
+};
+const getVendorPackageList = async (req, res) => {
+  const { vendorId, categoryId } = req.params;
+
+  try {
+    const query = { vendorId: vendorId };
+    if (categoryId !== "all") {
+      query.Category = categoryId;
+    }
+
+    const vendorPackages = await vendorServiceListingFormModal.find(query);
+
+    const services = vendorPackages.flatMap((packageItem) => {
+      return packageItem.services.map((service) => {
+        const values = service.values || new Map();
+
+        // Extracting values from the Map
+        const title =
+          values.get("Title") ||
+          values.get("VenueName") ||
+          values.get("FoodTruckName") ||
+          null;
+
+        return {
+          _id: service._id, // Include the service's _id
+          title,
+        };
+      });
+    });
+
+    res.status(200).json({ services });
   } catch (error) {
     console.error("Server error:", error);
     res.status(500).json({ error: "Server error", details: error.message });
@@ -561,4 +594,5 @@ export {
   updateVendorBioByAdmin,
   updateVendorProfilePictureByAdmin,
   getVendorByNameOrVendorUserName,
+  getVendorPackageList,
 };

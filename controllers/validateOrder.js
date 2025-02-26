@@ -1,7 +1,6 @@
 // import { Cashfree } from "cashfree-pg";
 import OrderModel from "../modals/order.modal.js";
 
-
 // export const validateOrder = async (req, res) => {
 //   try {
 //     const { orderId } = req.body;
@@ -29,12 +28,12 @@ import OrderModel from "../modals/order.modal.js";
 //   }
 // };
 
-
-
-
 import Razorpay from "razorpay";
 import crypto from "crypto";
-
+import Cart from "../modals/Cart.modal.js";
+import addOrderToVendorCalendor from "./vendorCalendor.controller.js";
+import { generateInvoice } from "../utils/generateInvoice.js";
+import { sendEmail } from "../utils/emailService.js";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -44,16 +43,21 @@ const razorpay = new Razorpay({
 export const validateOrder = async (req, res) => {
   try {
     const { orderId, paymentId, razorpaySignature } = req.body;
-console.log(orderId, paymentId, razorpaySignature);
+    const userId = req.user?._id;
+    console.log(userId, req.user);
 
     if (!orderId || !paymentId || !razorpaySignature) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing required fields" });
     }
 
     // Fetch order details from DB
     const order = await OrderModel.findOne({ razorPayOrderId: orderId });
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
     // ✅ **Step 1: Verify Razorpay Payment Signature**
@@ -63,7 +67,9 @@ console.log(orderId, paymentId, razorpaySignature);
       .digest("hex");
 
     if (generatedSignature !== razorpaySignature) {
-      return res.status(400).json({ success: false, message: "Invalid payment signature" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid payment signature" });
     }
 
     // ✅ **Step 2: Fetch Payment Status from Razorpay**
@@ -71,15 +77,38 @@ console.log(orderId, paymentId, razorpaySignature);
 
     if (paymentDetails.status === "captured") {
       order.status = "CONFIRMED";
+      order.paymentStatus = "SUCCESS";
     } else if (paymentDetails.status === "failed") {
       order.status = "CANCELLED";
+      order.paymentStatus = "FAILED";
     } else {
       order.status = "PENDING";
+      order.paymentStatus = "PENDING";
     }
 
     await order.save();
+    const cart = await Cart.findOneAndDelete({ userId: userId });
+    res.json({ success: true, status: order.status });
+    if (order.status === "CONFIRMED") {
+      const invoiceBuffer = await generateInvoice(order); // Generate the invoice as a buffer
 
-    return res.json({ success: true, status: order.status });
+      // Send the email with the invoice attached
+      const emailResponse = await sendEmail(
+        "armanal3066@gmail.com", // Assuming you have `customerEmail` in the order
+        "Your Order Invoice",
+        "Thank you for your order! Please find your invoice attached.",
+        {
+          attachments: [
+            {
+              filename: `Invoice-${order._id}.pdf`,
+              content: invoiceBuffer,
+            },
+          ],
+        }
+      );
+
+      console.log("Invoice email sent successfully:", emailResponse);
+    }
   } catch (error) {
     console.error("Error validating order:", error);
     return res.status(500).json({ success: false, error: error.message });

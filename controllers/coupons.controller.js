@@ -13,6 +13,7 @@ const createCoupon = async (req, res) => {
       vendorId,
       categoryId,
       applyAutoCoupon,
+      selectedpackage,
     } = req.body;
 
     if (!code || !startDate || !endDate || !usageLimit) {
@@ -45,6 +46,7 @@ const createCoupon = async (req, res) => {
       categoryId: categoryId,
       vendorId: vendorId || null,
       applyAutoCoupon: applyAutoCoupon,
+      selectedpackage: selectedpackage || null,
     });
 
     await coupon.save();
@@ -60,9 +62,9 @@ const createCoupon = async (req, res) => {
 
 const validateCoupon = async (req, res) => {
   try {
-    const { couponId, userId, email, orderAmount } = req.body;
+    const { couponCode, userId, orderAmount } = req.body;
 
-    const coupon = await Coupon.findById(couponId);
+    const coupon = await Coupon.findOne({ couponCode });
 
     if (!coupon) {
       return res.status(404).json({ message: "Coupon not found." });
@@ -78,7 +80,6 @@ const validateCoupon = async (req, res) => {
 
     const userUsage = coupon.usersUsed.get(userId);
 
-    // If user already used the coupon
     if (userUsage && userUsage.usageCount >= coupon.usageLimit) {
       return res
         .status(400)
@@ -91,7 +92,6 @@ const validateCoupon = async (req, res) => {
       // Apply fixed discount
       discount = coupon.discountAmount;
     } else if (coupon.discountPercentage) {
-      // Apply percentage discount with optional cap
       discount = (coupon.discountPercentage / 100) * orderAmount;
       if (coupon.cap !== null) {
         discount = Math.min(discount, coupon.cap);
@@ -101,7 +101,6 @@ const validateCoupon = async (req, res) => {
     // Update usage details for this user
     coupon.usersUsed.set(userId, {
       userId,
-      email,
       usageCount: (userUsage?.usageCount || 0) + 1,
     });
 
@@ -136,7 +135,6 @@ const getCouponById = async (req, res) => {
       path: "vendorId",
       select: "name",
     });
-    
 
     if (!coupon) {
       return res.status(404).json({ message: "Coupon not found." });
@@ -210,6 +208,16 @@ const deleteCoupon = async (req, res) => {
     res
       .status(500)
       .json({ message: "Error deleting coupon.", error: error.message });
+  }
+};
+const getVendorCouponDiscount = async (req, res) => {
+  const { catId } = req.params;
+  try {
+    const getCoupon=await Coupon.findById()
+  } catch (error) {
+    res
+    .status(500)
+    .json({ message: "Error coupon.", error: error.message });
   }
 };
 export {

@@ -7,10 +7,8 @@ import userAddress from "../modals/address.modal.js";
 const createOrder = async (req, res) => {
   try {
     const { userId } = req.params;
-    let { numberOfParts } = req.params; // Take number of parts from client
-    console.log(numberOfParts);
+    let { numberOfParts } = req.params; 
 
-    // Ensure numberOfParts is valid (1, 2, or 3). Default to 1 if invalid.
     numberOfParts = [1, 2, 3].includes(Number(numberOfParts))
       ? Number(numberOfParts)
       : 1;
@@ -78,39 +76,69 @@ const createOrder = async (req, res) => {
     const appliedCoupon = cart.appliedCoupon ? cart.appliedCoupon.code : null;
     const discount = cart.appliedCoupon ? cart.appliedCoupon.discount : 0;
 
-    const totalAmount = Math.floor(
-      totalOfCart + platformFee + platformGstAmount + totalGst - discount,
-      0
+    const totalAmount = parseFloat(
+      (totalOfCart + platformFee + platformGstAmount + totalGst - discount).toFixed(2)
     );
+    
     let partialPayments = [];
     let leftAmount = totalAmount;
 
-    if (numberOfParts > 1) {
-      const partAmount = Math.floor(totalAmount / numberOfParts);
-      let remainder = totalAmount % numberOfParts;
+    if (numberOfParts === 2) {
+      // Calculate 80% and 20% for 2 parts
+      const firstPart = Math.floor(totalAmount * 0.8);
+      const secondPart = totalAmount - firstPart;
 
-      // Generate parts with equal amounts, adjusting the last part for the remainder
-      partialPayments = Array.from({ length: numberOfParts }, (_, index) => {
-        const isPaid = index === 0;
-        const amount = isPaid ? partAmount + remainder : partAmount;
-        remainder = 0; // Ensure remainder is only added to the first part
+      partialPayments = [
+        {
+          partNumber: 1,
+          amount: firstPart,
+          dueDate: new Date(Date.now()), // First part is due immediately
+          status: "PAID",
+        },
+        {
+          partNumber: 2,
+          amount: secondPart,
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Due in 30 days
+          status: "PENDING",
+        },
+      ];
 
-        return {
-          partNumber: index + 1,
-          amount,
-          dueDate: new Date(
-            Date.now() + index * 30 * 24 * 60 * 60 * 1000 // Due dates every 30 days
-          ),
-          status: isPaid ? "PAID" : "PENDING",
-        };
-      });
+      leftAmount = secondPart;
+    } else if (numberOfParts === 3) {
+      // Calculate 50%, 30%, and 20% for 3 parts
+      const firstPart = Math.floor(totalAmount * 0.5);
+      const secondPart = Math.floor(totalAmount * 0.3);
+      const thirdPart = totalAmount - firstPart - secondPart;
 
-      leftAmount = totalAmount - partialPayments[0].amount;
+      partialPayments = [
+        {
+          partNumber: 1,
+          amount: firstPart,
+          dueDate: new Date(Date.now()), // First part is due immediately
+          status: "PAID",
+        },
+        {
+          partNumber: 2,
+          amount: secondPart,
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Due in 30 days
+          status: "PENDING",
+        },
+        {
+          partNumber: 3,
+          amount: thirdPart,
+          dueDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // Due in 60 days
+          status: "PENDING",
+        },
+      ];
+
+      leftAmount = secondPart + thirdPart;
+    } else if (numberOfParts === 1) {
+      // Single payment scenario
+      partialPayments = [];
+      leftAmount = 0;
     }
     const options = {
-      amount:
-        Number(numberOfParts > 1 ? partialPayments[0].amount : totalAmount) *
-        100,
+      amount: Number(partialPayments[0]?.amount || totalAmount) * 100,
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
       payment_capture: 1,
@@ -144,7 +172,7 @@ const createOrder = async (req, res) => {
         pinCode: selectedAddress.pinCode,
       },
       partialPayments,
-      paymentStatus: numberOfParts > 1 ? "PENDING" : "SUCCESS",
+      paymentStatus: numberOfParts > 1 ? "PENDING" : "PENDING",
       leftAmount,
     });
 
@@ -153,11 +181,46 @@ const createOrder = async (req, res) => {
       order_id: order?.id,
       amount: order?.amount,
       currency: "INR",
+      partialPayments,
     });
   } catch (error) {
     console.error("Error creating order:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
+const updateOrder = async (req, res) => {
+  try {
+    const { orderId, status, paymentStatus } = req.body;
 
-export { createOrder };
+    // Validate input
+    if (!orderId) {
+      return res.status(400).json({ message: "Order ID is required." });
+    }
+
+    // Create an update object dynamically based on provided fields
+    const updateFields = {};
+    if (status) updateFields.status = status;
+    if (paymentStatus) updateFields.paymentStatus = paymentStatus;
+
+    // Find the order and update the necessary fields
+    const updatedOrder = await OrderModel.findOneAndUpdate(
+      { razorPayOrderId: orderId }, // Match by `OrderId`
+      { $set: updateFields }, // Update fields
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    return res.status(200).json({
+      message: "Order updated successfully.",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Error updating order:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export { createOrder ,updateOrder};

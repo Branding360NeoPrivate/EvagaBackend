@@ -1,6 +1,8 @@
 import Cart from "../modals/Cart.modal.js";
+import { Category } from "../modals/categoryModel.js";
 import Coupon from "../modals/coupons.modal.js";
 import GstCategory from "../modals/gstCategory.modal.js";
+import Vender from "../modals/vendor.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
 const addToCart = async (req, res) => {
   try {
@@ -18,6 +20,8 @@ const addToCart = async (req, res) => {
     } = req.body;
 
     selectedSessions = selectedSessions ? JSON.parse(selectedSessions) : [];
+    console.log(selectedSessions);
+
     const basePrice = defaultPrice ? Number(defaultPrice) : 0;
     const service = await vendorServiceListingFormModal.findById(serviceId);
     if (!service) {
@@ -33,10 +37,11 @@ const addToCart = async (req, res) => {
 
     const sessions = selectedSessions.map((session) => ({
       ...session,
-      sessionTotalPrice: session.Amount * session.quantity,
+      sessionTotalPrice:
+        (session.Amount || Number(session.rateInfo)) * session.quantity,
       sessionName: session.type,
       quantity: session.quantity,
-      sessionPrice: session.Amount,
+      sessionPrice: session.Amount || Number(session.rateInfo),
     }));
 
     // const addonsTotalPrice = addons.reduce(
@@ -99,8 +104,8 @@ const getCart = async (req, res) => {
     const { couponCode } = req.query;
     let discount = 0;
     let appliedCoupon = null;
-
-    // Fetch the cart
+    let categoryName = null;
+    let vendorName = null;
     const cart = await Cart.findOne({ userId });
 
     if (!cart) {
@@ -112,7 +117,7 @@ const getCart = async (req, res) => {
       0
     );
     const platformFee = Math.min((totalOfCart * 2) / 100, 1000);
-    const gstPercentagePlatform = 18; // Default GST percentage for platform fee
+    const gstPercentagePlatform = 18;
     const platformGstAmount = (platformFee * gstPercentagePlatform) / 100;
 
     if (couponCode) {
@@ -129,7 +134,9 @@ const getCart = async (req, res) => {
 
       const userUsage = coupon.usersUsed.get(userId);
       if (userUsage && userUsage.usageCount >= coupon.usageLimit) {
-        return res.status(400).json({ error: "Usage limit reached for this coupon." });
+        return res
+          .status(400)
+          .json({ error: "Usage limit reached for this coupon." });
       }
 
       if (coupon.discountAmount) {
@@ -150,7 +157,6 @@ const getCart = async (req, res) => {
       };
       await cart.save();
 
-  
       coupon.usersUsed.set(userId, {
         userId,
         usageCount: (userUsage?.usageCount || 0) + 1,
@@ -164,7 +170,7 @@ const getCart = async (req, res) => {
           item.serviceId
         );
 
-        let gstPercentage = 18; // Default GST percentage
+        let gstPercentage = 18;
         let gstAmount = 0;
 
         if (service) {
@@ -192,7 +198,15 @@ const getCart = async (req, res) => {
             }
 
             gstAmount = (item.totalPrice * gstPercentage) / 100;
-
+            // Fetch category name
+            const category = await Category.findById(service.Category);
+            if (category) {
+              categoryName = category.name;
+            }
+            const vendor = await Vender.findById(service.vendorId); 
+            if (vendor) {
+              vendorName = vendor.userName; 
+            }
             return {
               ...item._doc,
               packageDetails: {
@@ -202,8 +216,9 @@ const getCart = async (req, res) => {
                 VenueName,
                 FoodTruckName,
               },
-              gstPercentage, // Appending GST percentage
-              gstAmount, // Appending GST amount
+              gstPercentage,
+              gstAmount,
+              categoryName,vendorName
             };
           }
         }
@@ -211,8 +226,9 @@ const getCart = async (req, res) => {
         return {
           ...item._doc,
           packageDetails: null,
-          gstPercentage, // Default GST percentage
-          gstAmount, // Default GST amount
+          gstPercentage,
+          gstAmount,
+          categoryName,vendorName
         };
       })
     );
@@ -244,8 +260,6 @@ const getCart = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-
 
 const updateCartItem = async (req, res) => {
   try {

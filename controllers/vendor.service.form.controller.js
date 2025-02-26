@@ -456,7 +456,7 @@ const addVenderService = async (req, res) => {
     // Delete any uploaded files
     if (req.files) {
       req.files.forEach((file) => {
-        const filePath = file.path.replace(/^public[\\/]/, "");
+        const filePath = file?.path?.replace(/^public[\\/]/, "");
         fs.unlink(filePath, (err) => {
           if (err) {
             console.error("Error deleting file:", filePath, err);
@@ -540,6 +540,8 @@ const getAllVenderService = async (req, res) => {
         SubCategory: service.SubCategory,
         createdAt: service.createdAt,
         updatedAt: service.updatedAt,
+        AbouttheService: service.AbouttheService,
+        YearofExperience: service.YearofExperience,
         services: [
           {
             values, // Include modified `values` without `Portfolio`
@@ -950,9 +952,7 @@ const updateOneVenderService = async (req, res) => {
           const key = value.key;
           const type = value.type;
           if (type === "radio") {
-            // Process radio types
             const selectedItem = value?.items.find((item) => item.checked);
-            console.log(selectedItem);
 
             if (selectedItem) {
               value.items = selectedItem.value;
@@ -1350,6 +1350,58 @@ const VerifyService = async (req, res) => {
     });
   }
 };
+
+
+const generateUniqueSKU = async () => {
+  let sku;
+  let isUnique = false;
+
+  while (!isUnique) {
+    sku = Math.floor(100000 + Math.random() * 900000).toString(); // Generate a 6-digit number
+    const existingDoc = await VendorServiceLisitingForm.findOne({ "services.sku": sku });
+    if (!existingDoc) {
+      isUnique = true;
+    }
+  }
+
+  return sku;
+};
+
+// Migration script
+const addSKUsToExistingDocuments = async () => {
+  try {
+    const documents = await VendorServiceLisitingForm.find();
+
+    for (let doc of documents) {
+      let isUpdated = false;
+
+      for (let service of doc.services) {
+        if (!service.sku) {
+          service.sku = await generateUniqueSKU();
+          isUpdated = true;
+        }
+      }
+
+      if (isUpdated) {
+        await doc.save();
+        console.log(`Updated document with ID: ${doc._id}`);
+      }
+    }
+
+    console.log("SKU migration completed successfully.");
+  } catch (error) {
+    console.error("Error during SKU migration:", error);
+  }
+};
+
+// Main function
+const main = async () => {
+  await addSKUsToExistingDocuments();
+  
+};
+
+// main(); this function is used for to create sku id for old vendor service which dont have any sku id
+
 
 export {
   addVenderService,
