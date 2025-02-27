@@ -4,10 +4,16 @@ import Cart from "../modals/Cart.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
 import { razorpay } from "../config/gatewayConfig.js";
 import userAddress from "../modals/address.modal.js";
+const generateUniqueOrderId = () => {
+  const timestamp = Date.now().toString().slice(-6);
+  const randomPart = Math.floor(100 + Math.random() * 900);
+  return `${timestamp}${randomPart}`;
+};
+
 const createOrder = async (req, res) => {
   try {
     const { userId } = req.params;
-    let { numberOfParts } = req.params; 
+    let { numberOfParts } = req.params;
 
     numberOfParts = [1, 2, 3].includes(Number(numberOfParts))
       ? Number(numberOfParts)
@@ -27,14 +33,11 @@ const createOrder = async (req, res) => {
       0
     );
 
-    // Recalculate Platform Fee (2% of cart total, max ₹1000)
     const platformFee = Math.min((totalOfCart * 2) / 100, 1000);
 
-    // Recalculate Platform GST (18% of platform fee)
-    const gstPercentage = 18;
+    let gstPercentage = 18;
     const platformGstAmount = (platformFee * gstPercentage) / 100;
 
-    // Recalculate GST for each item and include date, time, and pincode
     const updatedItems = await Promise.all(
       cart.items.map(async (item) => {
         const service = await vendorServiceListingFormModal.findById(
@@ -51,9 +54,9 @@ const createOrder = async (req, res) => {
           if (gstCategory && gstCategory.gstRates.length > 0) {
             const activeGst =
               gstCategory.gstRates[gstCategory.gstRates.length - 1];
-            gstRate = activeGst.gstPercentage || 19;
+            gstRate = activeGst.gstPercentage || 18;
           }
-
+          gstPercentage = gstRate;
           gstAmount = (item.totalPrice * gstRate) / 100;
         }
 
@@ -73,13 +76,21 @@ const createOrder = async (req, res) => {
       0
     );
 
-    const appliedCoupon = cart.appliedCoupon ? cart.appliedCoupon.code : null;
-    const discount = cart.appliedCoupon ? cart.appliedCoupon.discount : 0;
+    const appliedCoupon = cart?.appliedCoupon
+      ? cart?.appliedCoupon?.code
+      : null;
+    const discount = cart?.appliedCoupon ? cart?.appliedCoupon?.discount : 0;
 
     const totalAmount = parseFloat(
-      (totalOfCart + platformFee + platformGstAmount + totalGst - discount).toFixed(2)
+      (
+        totalOfCart +
+        platformFee +
+        platformGstAmount +
+        totalGst -
+        discount
+      ).toFixed(2)
     );
-    
+
     let partialPayments = [];
     let leftAmount = totalAmount;
 
@@ -138,7 +149,9 @@ const createOrder = async (req, res) => {
       leftAmount = 0;
     }
     const options = {
-      amount: Number(partialPayments[0]?.amount || totalAmount) * 100,
+      amount: Math.round(
+        Number(partialPayments[0]?.amount || totalAmount) * 100
+      ),
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
       payment_capture: 1,
@@ -153,15 +166,13 @@ const createOrder = async (req, res) => {
       platformFee,
       platformGstAmount,
       totalGst,
-      appliedCoupon,
+      appliedCouponAndDiscount: {
+        code: appliedCoupon,
+        discount: discount,
+      },
       discount,
       razorPayOrderId: order?.id,
-      OrderId: `ORDER-${new Date()
-        .toISOString()
-        .replace(/[-:.TZ]/g, "")}-${Math.random()
-        .toString(36)
-        .substring(2, 8)
-        .toUpperCase()}`,
+      OrderId: `ORDER-${generateUniqueOrderId()}`,
       status: "PENDING",
       address: {
         name: selectedAddress.Name,
@@ -223,4 +234,4 @@ const updateOrder = async (req, res) => {
   }
 };
 
-export { createOrder ,updateOrder};
+export { createOrder, updateOrder };

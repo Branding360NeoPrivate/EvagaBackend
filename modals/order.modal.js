@@ -42,7 +42,7 @@ const OrderSchema = new mongoose.Schema(
     platformFee: { type: Number, required: true },
     platformGstAmount: { type: Number, required: true },
     totalGst: { type: Number, required: true },
-    appliedCoupon: {
+    appliedCouponAndDiscount: {
       code: { type: String, default: null },
       discount: { type: Number, default: 0 },
     },
@@ -75,6 +75,11 @@ const OrderSchema = new mongoose.Schema(
         status: { type: String, enum: ["PENDING", "PAID"], default: "PENDING" },
       },
     ],
+    paymentDetails: {
+      method: { type: String, required: false }, 
+      details: { type: mongoose.Schema.Types.Mixed, required: false }, 
+    }
+    
   },
   { timestamps: true }
 );

@@ -106,6 +106,7 @@ const getCart = async (req, res) => {
     let appliedCoupon = null;
     let categoryName = null;
     let vendorName = null;
+
     const cart = await Cart.findOne({ userId });
 
     if (!cart) {
@@ -120,11 +121,12 @@ const getCart = async (req, res) => {
     const gstPercentagePlatform = 18;
     const platformGstAmount = (platformFee * gstPercentagePlatform) / 100;
 
+    // If a coupon code is sent in the request, validate and apply it
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode });
 
       if (!coupon) {
-        return res.status(404).json({ message: "Invalid coupon code." });
+        return res.status(404).json({ error: "Invalid coupon code." });
       }
 
       const now = new Date();
@@ -139,6 +141,7 @@ const getCart = async (req, res) => {
           .json({ error: "Usage limit reached for this coupon." });
       }
 
+      // Apply discount from the coupon
       if (coupon.discountAmount) {
         discount = coupon.discountAmount;
       } else if (coupon.discountPercentage) {
@@ -151,17 +154,21 @@ const getCart = async (req, res) => {
       discount = Math.min(discount, totalOfCart);
       appliedCoupon = couponCode;
 
-      cart.appliedCoupon = {
-        code: couponCode,
-        discount,
-      };
+      // Save applied coupon to the cart
+      cart.appliedCoupon = { code: couponCode, discount };
       await cart.save();
 
+      // Update coupon usage
       coupon.usersUsed.set(userId, {
         userId,
         usageCount: (userUsage?.usageCount || 0) + 1,
       });
       await coupon.save();
+    }
+    
+    else if (cart.appliedCoupon?.code) {
+      discount = cart.appliedCoupon.discount;
+      appliedCoupon = cart.appliedCoupon.code;
     }
 
     const updatedItems = await Promise.all(
@@ -198,15 +205,15 @@ const getCart = async (req, res) => {
             }
 
             gstAmount = (item.totalPrice * gstPercentage) / 100;
-            // Fetch category name
             const category = await Category.findById(service.Category);
             if (category) {
               categoryName = category.name;
             }
-            const vendor = await Vender.findById(service.vendorId); 
+            const vendor = await Vender.findById(service.vendorId);
             if (vendor) {
-              vendorName = vendor.userName; 
+              vendorName = vendor.userName;
             }
+
             return {
               ...item._doc,
               packageDetails: {
@@ -218,7 +225,8 @@ const getCart = async (req, res) => {
               },
               gstPercentage,
               gstAmount,
-              categoryName,vendorName
+              categoryName,
+              vendorName,
             };
           }
         }
@@ -228,7 +236,8 @@ const getCart = async (req, res) => {
           packageDetails: null,
           gstPercentage,
           gstAmount,
-          categoryName,vendorName
+          categoryName,
+          vendorName,
         };
       })
     );
@@ -249,6 +258,7 @@ const getCart = async (req, res) => {
       platformGstAmount,
       totalGst,
       discount,
+      code: cart?.appliedCoupon?.code,
       appliedCoupon,
       totalBeforeDiscount,
       totalAfterDiscount,
@@ -313,15 +323,15 @@ const updateCartItem = async (req, res) => {
 
 const removeCartItem = async (req, res) => {
   try {
-    const { userId, serviceId } = req.body;
+    const { userId, packageId } = req.params;
 
-    const cart = await Cart.findOne({ userId });
+    const cart = await Cart.findOne({ userId: userId });
     if (!cart) {
       return res.status(404).json({ error: "Cart not found" });
     }
 
     cart.items = cart.items.filter(
-      (item) => item.serviceId.toString() !== serviceId
+      (item) => item.packageId.toString() !== packageId
     );
 
     await cart.save();

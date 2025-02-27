@@ -1,3 +1,4 @@
+import Cart from "../modals/Cart.modal.js";
 import Coupon from "../modals/coupons.modal.js";
 
 const createCoupon = async (req, res) => {
@@ -213,13 +214,47 @@ const deleteCoupon = async (req, res) => {
 const getVendorCouponDiscount = async (req, res) => {
   const { catId } = req.params;
   try {
-    const getCoupon=await Coupon.findById()
+    const getCoupon = await Coupon.findById();
   } catch (error) {
-    res
-    .status(500)
-    .json({ message: "Error coupon.", error: error.message });
+    res.status(500).json({ message: "Error coupon.", error: error.message });
   }
 };
+const removeCoupon = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    if (!cart.appliedCoupon) {
+      return res.status(400).json({ message: "No coupon applied to remove" });
+    }
+
+    const coupon = await Coupon.findOne({ code: cart.appliedCoupon.code });
+    if (coupon) {
+      const userUsage = coupon.usersUsed.get(userId);
+      if (userUsage) {
+        userUsage.usageCount = Math.max(userUsage.usageCount - 1, 0);
+        coupon.usersUsed.set(userId, userUsage);
+        await coupon.save();
+      }
+    }
+
+    cart.appliedCoupon = {
+      code: null,
+      discount: 0,
+    };
+    await cart.save();
+
+    res.status(200).json({ message: "Coupon removed successfully", cart });
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   createCoupon,
   getCoupons,
@@ -227,4 +262,5 @@ export {
   editCoupon,
   getCouponById,
   deleteCoupon,
+  removeCoupon,
 };
