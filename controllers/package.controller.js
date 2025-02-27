@@ -372,12 +372,22 @@ const getAllPackage = async (req, res) => {
         $match: {
           ...(eventTypes.length > 0 && {
             $or: [
-              { "serviceDetails.values.Event Type": { $in: eventTypes } },
-              { "serviceDetails.values.EventType": { $in: eventTypes } },
+              {
+                "serviceDetails.values.Event Type": {
+                  $regex: new RegExp(eventTypes, "i"),
+                },
+              },
+              {
+                "serviceDetails.values.EventType": {
+                  $regex: new RegExp(eventTypes, "i"),
+                },
+              },
             ],
           }),
           ...(locationTypes.length > 0 && {
-            "serviceDetails.values.LocationType": { $in: locationTypes },
+            "serviceDetails.values.LocationType": {
+              $regex: new RegExp(locationTypes, "i"),
+            },
           }),
 
           // ...(priceRange.length === 2 && {
