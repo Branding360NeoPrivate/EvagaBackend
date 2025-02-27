@@ -18,6 +18,8 @@ const getAllPackage = async (req, res) => {
   const eventTypes = req.query.eventTypes || [];
   const locationTypes = req.query.locationTypes || [];
   const priceRange = req.query.priceRange || [];
+  console.log(searchTerm);
+
   if (categoryId !== "all" && !isValidObjectId(categoryId)) {
     return res.status(400).json({ error: "Invalid Category ID" });
   }
@@ -334,6 +336,12 @@ const getAllPackage = async (req, res) => {
               },
             },
             {
+              "serviceDetails.values.EventType": {
+                $regex: searchTerm,
+                $options: "i",
+              },
+            },
+            {
               "serviceDetails.values.Inclusions": {
                 $regex: searchTerm,
                 $options: "i",
@@ -510,7 +518,9 @@ const getOnepackage = async (req, res) => {
   const { serviceId, packageid } = req.params;
 
   if (!serviceId || !packageid) {
-    return res.status(404).json({ error: "Service ID and Package ID are required" });
+    return res
+      .status(404)
+      .json({ error: "Service ID and Package ID are required" });
   }
 
   try {
@@ -563,10 +573,15 @@ const getOnepackage = async (req, res) => {
     // Function to update array-based values
     const updateArray = (key, fieldName) => {
       if (packageDetails.values.has(key)) {
-        const updatedArray = packageDetails.values.get(key)?.map((item, index) => ({
-          ...item,
-          [fieldName]: applyIncrease(item[fieldName], `${key}[${index}].${fieldName}`),
-        }));
+        const updatedArray = packageDetails.values
+          .get(key)
+          ?.map((item, index) => ({
+            ...item,
+            [fieldName]: applyIncrease(
+              item[fieldName],
+              `${key}[${index}].${fieldName}`
+            ),
+          }));
         packageDetails.values.set(key, updatedArray);
       }
     };
@@ -579,7 +594,7 @@ const getOnepackage = async (req, res) => {
       SessionLength: "Amount",
       "SessionLength&Pricing": "Amount",
       QtyPricing: "Rates",
-      AddOns: "Rates"
+      AddOns: "Rates",
     };
 
     // Dynamically update only the fields that exist in packageDetails.values
@@ -604,8 +619,12 @@ const getOnepackage = async (req, res) => {
     verifiedService.services = [packageDetails];
 
     // Fetch vendor and category details
-    const getVendorDetails = await Vender.findById(verifiedService?.vendorId).select("userName bio -_id");
-    const category = await Category.findById(verifiedService?.Category).select("name -_id");
+    const getVendorDetails = await Vender.findById(
+      verifiedService?.vendorId
+    ).select("userName bio -_id");
+    const category = await Category.findById(verifiedService?.Category).select(
+      "name -_id"
+    );
 
     res.status(200).json({
       message: "Package updated successfully",
@@ -613,7 +632,6 @@ const getOnepackage = async (req, res) => {
       getVendorDetails: getVendorDetails,
       category: category,
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch package details",
@@ -621,6 +639,5 @@ const getOnepackage = async (req, res) => {
     });
   }
 };
-
 
 export { getAllPackage, getOnepackage };
