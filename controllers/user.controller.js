@@ -172,6 +172,12 @@ const googleAuth = async (req, res) => {
         profilePicture: picture,
       });
       await user.save();
+      await sendEmailWithTemplete(
+        "userwelcomeemail",
+        user?.email,
+        "Welcome to Evaga! Let’s Plan Your Perfect Event",
+        { customerName: user?.name }
+      );
     }
 
     const accessToken = user.generateAccessToken("user");
