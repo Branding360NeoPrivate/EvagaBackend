@@ -2,6 +2,8 @@ import { OAuth2Client } from "google-auth-library";
 import mongoose from "mongoose";
 import User from "../modals/user.modal.js";
 import path from "path";
+import sendLoginAlert, { sendEmail } from "../utils/mailer.js";
+import sendEmailWithTemplete from "../utils/mailer.js";
 const options = {
   httpOnly: true,
   secure: true,
@@ -47,6 +49,12 @@ const registerUser = async (req, res) => {
       googleId,
     });
     await newUser.save();
+    await sendEmailWithTemplete(
+      "userwelcomeemail",
+      newUser?.email,
+      "Welcome to Evaga! Let’s Plan Your Perfect Event",
+      { customerName: newUser?.name }
+    );
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
       newUser._id,
       "user"
@@ -86,19 +94,28 @@ const loginUser = async (req, res) => {
     if (!user) {
       return res.status(400).json({ error: "Invalid credentials" });
     }
+
     if (!user.password) {
       return res.status(400).json({
         error:
           "This account does not have a password. You may have signed in using Google. Please use that method to log in.",
       });
     }
+
     // Verify the password
     const isPasswordValid = await user.isPasswordCorrect(password);
     if (!isPasswordValid) {
       return res.status(400).json({ error: "Incorrect password" });
     }
-
+    // await sendEmail(
+    //   "signup",
+    //   user?.email,
+    //   "Welcome to Evaga! Complete Your KYC to Get Started",
+    //   { vendorName: user?.name, kycLink: "https://example.com/complete-kyc" }
+    // );
+    // await sendLoginAlert(user?.email);
     // Generate tokens
+
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
       user._id,
       "user"
@@ -220,7 +237,6 @@ const updateUserProfile = async (req, res) => {
     if (password && password.trim() !== "") {
       {
         const isSamePassword = await user.isPasswordCorrect(password.trim());
-    
 
         if (!isSamePassword) {
           user.password = password.trim();
@@ -238,9 +254,11 @@ const updateUserProfile = async (req, res) => {
 const getOneUserProfile = async (req, res) => {
   const { userId } = req.params;
   try {
-    const user = await User.findById(userId).populate("userAddresses").select(
-      "-password -createdAt -updatedAt -refreshToken -Otp -OtpExpires -interestId -userInterestFilled -_id -googleId"
-    );
+    const user = await User.findById(userId)
+      .populate("userAddresses")
+      .select(
+        "-password -createdAt -updatedAt -refreshToken -Otp -OtpExpires -interestId -userInterestFilled -_id -googleId"
+      );
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
