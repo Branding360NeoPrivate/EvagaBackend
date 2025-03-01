@@ -1024,7 +1024,7 @@ const verifyVendorDetails = async (req, res) => {
         await vendor.save();
         return res.status(400).json({
           success: false,
-          message:
+          error:
             "PAN verification failed. Please check the provided details.",
         });
       }
@@ -1037,7 +1037,7 @@ const verifyVendorDetails = async (req, res) => {
         await vendor.save();
         return res.status(400).json({
           success: false,
-          message:
+          error:
             "GST verification failed. Please check the provided details.",
         });
       }
