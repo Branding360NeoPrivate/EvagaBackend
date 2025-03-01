@@ -1048,10 +1048,9 @@ const verifyVendorDetails = async (req, res) => {
       verificationResult: result,
     });
   } catch (error) {
-    console.error(`Error verifying ${type.toUpperCase()}:`, error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      error: error.response.data?.message || 'something went wrong please try later',
     });
   }
 };
