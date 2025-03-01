@@ -21,10 +21,10 @@ async function sendAadhaarOtp(aadhaarNumber) {
     const { status, message, ref_id } = response.data;
 
     if (status === "SUCCESS") {
-      return { message, ref_id };
-    } else {
-      throw new Error(`Failed to send OTP: ${message}`);
-    }
+        return { success: true, message, ref_id };
+      } else {
+        return { success: false, message: `Failed to send OTP: ${message}` };
+      }
   } catch (error) {
     console.error("Error sending Aadhaar OTP:", error.message);
     throw error;

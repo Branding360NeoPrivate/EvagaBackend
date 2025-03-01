@@ -582,10 +582,11 @@ const uploadVendorBusinessDetails = async (req, res) => {
       );
 
       if (existingBusinessDetails) {
-        const { updates, requiresVerification } = shouldUpdateVerificationStatus(
-          ["udyamAadhaar", "panNumber", "gstNumber"],
-          existingBusinessDetails
-        );
+        const { updates, requiresVerification } =
+          shouldUpdateVerificationStatus(
+            ["udyamAadhaar", "panNumber", "gstNumber"],
+            existingBusinessDetails
+          );
 
         const updatedFields = {
           typeOfBusiness,
@@ -668,7 +669,6 @@ const uploadVendorBusinessDetails = async (req, res) => {
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
-
 
 const addNewCategoryvendorBusinessDeatils = async (req, res) => {
   const { businessId } = req.params;
@@ -1024,8 +1024,7 @@ const verifyVendorDetails = async (req, res) => {
         await vendor.save();
         return res.status(400).json({
           success: false,
-          error:
-            "PAN verification failed. Please check the provided details.",
+          error: "PAN verification failed. Please check the provided details.",
         });
       }
     } else if (type === "gstin") {
@@ -1037,8 +1036,7 @@ const verifyVendorDetails = async (req, res) => {
         await vendor.save();
         return res.status(400).json({
           success: false,
-          error:
-            "GST verification failed. Please check the provided details.",
+          error: "GST verification failed. Please check the provided details.",
         });
       }
     }
@@ -1094,23 +1092,29 @@ const verifyVendorGst = async (req, res) => {
 };
 const sendaadharotp = async (req, res) => {
   const { vendorId } = req.params;
+
   try {
     const businessDetails = await BusinessDetails.findOne({
       vendorID: vendorId,
     }).select(`udyamAadhaar`);
+
     if (!businessDetails || !businessDetails?.udyamAadhaar) {
       return res.status(404).json({
         success: false,
         message: `Vendor Udyam Aadhaar not found`,
       });
     }
-    const result = await sendAadhaarOtp(businessDetails?.udyamAadhaar);
 
-    if (!result) {
+    const result = await sendAadhaarOtp(businessDetails?.udyamAadhaar);
+    console.log(result, "result");
+
+    if (!result.success) {
       return res.status(400).json({
-        error: "Verification failed. Please check the Aadhar details.",
+        success: false,
+        message: result.message, // Return the error message from the function
       });
     }
+
     return res.status(200).json({
       success: true,
       result,
@@ -1123,6 +1127,7 @@ const sendaadharotp = async (req, res) => {
     });
   }
 };
+
 const verifyaadharotp = async (req, res) => {
   const { vendorId } = req.params;
   const { Otp, RefId } = req.body;
