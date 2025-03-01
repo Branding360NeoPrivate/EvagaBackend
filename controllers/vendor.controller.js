@@ -1048,9 +1048,10 @@ const verifyVendorDetails = async (req, res) => {
       verificationResult: result,
     });
   } catch (error) {
+    console.error(`Error verifying ${type.toUpperCase()}:`, error);
     return res.status(500).json({
       success: false,
-      error: error.response.data?.message || 'something went wrong please try later',
+      message: "Internal server error",
     });
   }
 };
@@ -1105,7 +1106,7 @@ const sendaadharotp = async (req, res) => {
     }
 
     const result = await sendAadhaarOtp(businessDetails?.udyamAadhaar);
-    console.log(result, "result");
+
 
     if (!result.success) {
       return res.status(400).json({
@@ -1119,10 +1120,10 @@ const sendaadharotp = async (req, res) => {
       result,
     });
   } catch (error) {
-    console.error(`Error verifying `, error);
+    // console.error(`Error verifying `, error.response.data?.message);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      error: error.response.data?.message || 'something went wrong please try later',
     });
   }
 };
