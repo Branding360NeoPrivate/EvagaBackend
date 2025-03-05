@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   archiveVendorServicehandle,
   deleteVendorService,
+  getAdminDashboardDataHandle,
   getAllUsersWithOrderDetails,
   getAllVendorsPackage,
   getAllVendorWithNumberOfService,
@@ -80,4 +81,7 @@ router
 router
   .route("/getAllUsersWithOrderDetails")
   .get(verifyJwt(["admin"]), upload().none(), getAllUsersWithOrderDetails);
+router
+  .route("/getAdminDashboardDataHandle")
+  .get(verifyJwt(["admin"]), upload().none(), getAdminDashboardDataHandle);
 export default router;
