@@ -1096,8 +1096,8 @@ const updatePackageStatusToVerified = async () => {
 const updateStatus = async () => {
   await updatePackageStatusToVerified();
 };
-updateStatus()
-main();
+// updateStatus()
+// main();
 //  this function is used for to create sku id for old vendor service which dont have any sku id
 
 export {
