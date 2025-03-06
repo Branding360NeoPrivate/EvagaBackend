@@ -10,6 +10,14 @@ const userAddressModal = new mongoose.Schema({
     type: String,
     required: true,
   },
+  Phone: {
+    type: String,
+    required: true,
+  },
+  alternatePhone: {
+    type: String,
+    required: false,
+  },
   address: {
     type: String,
     required: true,
