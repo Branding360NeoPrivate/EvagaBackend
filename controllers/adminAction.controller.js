@@ -11,6 +11,7 @@ import { S3Client, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import User from "../modals/user.modal.js";
 import OrderModel from "../modals/order.modal.js";
 import { Parser } from "json2csv";
+import fs from 'fs'
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -1011,8 +1012,19 @@ const getAllUsersWithOrderDetails = async (req, res) => {
 };
 const getAdminDashboardDataHandle = async (req, res) => {
   try {
-    const totalVendor = await Vender.find();
+    // Fetch all vendors
+    const totalVendors = await Vender.find();
 
+    // Count vendors based on verificationStatus
+    const totalRegisteredVendors = totalVendors.filter(
+      (vendor) => vendor.verificationStatus === false
+    ).length;
+
+    const totalVerifiedRegisteredVendors = totalVendors.filter(
+      (vendor) => vendor.verificationStatus === true
+    ).length;
+
+    // Order status details with aggregation
     const orderStatusDetails = await OrderModel.aggregate([
       // Add a field to calculate per-item platform fees
       {
@@ -1064,16 +1076,56 @@ const getAdminDashboardDataHandle = async (req, res) => {
       count: status.count,
       totalCombined: status.totalCombined,
     }));
+    const serviceListings = await vendorServiceListingFormModal.find();
+
+    // Initialize counters for services
+    let totalServices = 0;
+    let pendingCount = 0;
+    let verifiedCount = 0;
+    let rejectedCount = 0;
+
+    // Process services to count statuses
+    serviceListings.forEach((listing) => {
+      if (listing.services && Array.isArray(listing.services)) {
+        totalServices += listing.services.length; // Add the number of services
+
+        listing.services.forEach((service) => {
+          switch (service.packageStatus) {
+            case "Pending":
+              pendingCount++;
+              break;
+            case "Verified":
+              verifiedCount++;
+              break;
+            case "Rejected":
+              rejectedCount++;
+              break;
+            default:
+              break;
+          }
+        });
+      }
+    });
+
 
     res.status(200).json({
-      totalVendor: totalVendor.length,
+      totalVendors: totalVendors.length,
+      totalRegisteredVendors,
+      totalVerifiedRegisteredVendors,
       orderStatusSummary,
+      serviceSummary: {
+        totalServices,
+        pendingCount,
+        verifiedCount,
+        rejectedCount,
+      },
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 const downloadVendorsAsCSV = async (req, res) => {
   const searchTerm = req.query.search || "";
   const filter = req.query.filter || "All Vendors";
@@ -1382,7 +1434,6 @@ const downloadVendorsAsCSV = async (req, res) => {
         })
         .join("; "),
     }));
-    
 
     // Convert JSON to CSV
     const fields = [
@@ -1412,6 +1463,78 @@ const downloadVendorsAsCSV = async (req, res) => {
   }
 };
 
+const downloadVendorListing = async (req, res) => {
+  try {
+    const pipeline = [
+      {
+        $lookup: {
+          from: "venders",
+          localField: "vendorId",
+          foreignField: "_id",
+          as: "vendorDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$vendorDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$services",
+        },
+      },
+      {
+        $project: {
+          serviceData: {
+            $objectToArray: "$services.values",
+          },
+          vendorUserName: "$vendorDetails.userName",
+          sku: "$services.sku",
+        },
+      },
+    ];
+
+    const servicesWithVendorDetails = await vendorServiceListingFormModal.aggregate(pipeline);
+
+    if (!servicesWithVendorDetails.length) {
+      return res.status(404).json({ message: "No services found" });
+    }
+
+    // Prepare data for CSV
+    const csvData = servicesWithVendorDetails.map((service) => {
+      const serviceData = service.serviceData.reduce((acc, field) => {
+        const { k: key, v: value } = field;
+        if (!["CoverImage", "Portfolio", "ProductImage"].includes(key)) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      return {
+        vendorUserName: service.vendorUserName || "N/A",
+        sku: service.sku || "N/A",
+        ...serviceData,
+      };
+    });
+
+    // Define CSV fields dynamically
+    const fields = Object.keys(csvData[0]);
+    const parser = new Parser({ fields });
+    const csv = parser.parse(csvData);
+
+    // Send CSV file as a response
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=vendor_listing.csv");
+    res.status(200).send(csv);
+  } catch (error) {
+    console.error("Error fetching vendor listing:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
 export {
   getAllVendorWithThereProfileStatusAndService,
   vendorVerifyDocument,
@@ -1429,4 +1552,5 @@ export {
   getAllUsersWithOrderDetails,
   getAdminDashboardDataHandle,
   downloadVendorsAsCSV,
+  downloadVendorListing,
 };
