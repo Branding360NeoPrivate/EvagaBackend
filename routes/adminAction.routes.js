@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   archiveVendorServicehandle,
   deleteVendorService,
+  downloadVendorsAsCSV,
   getAdminDashboardDataHandle,
   getAllUsersWithOrderDetails,
   getAllVendorsPackage,
@@ -84,4 +85,9 @@ router
 router
   .route("/getAdminDashboardDataHandle")
   .get(verifyJwt(["admin"]), upload().none(), getAdminDashboardDataHandle);
+  router
+  .route("/downloadVendorsAsCSV")
+  .get(
+    // verifyJwt(["admin"]), 
+  upload().none(), downloadVendorsAsCSV);
 export default router;
