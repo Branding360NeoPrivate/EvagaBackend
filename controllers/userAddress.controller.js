@@ -14,6 +14,7 @@ const addAddress = async (req, res) => {
       pinCode,
       Phone,
       alternatePhone,
+      AddressType,
     } = req.body;
 
     const userNewAddress = new userAddress({
@@ -27,6 +28,7 @@ const addAddress = async (req, res) => {
       pinCode,
       Phone,
       alternatePhone,
+      AddressType,
     });
     const savedAddress = await userNewAddress.save();
     const user = await User.findById(userId);
@@ -95,6 +97,7 @@ const updateAddress = async (req, res) => {
       pinCode,
       Phone,
       alternatePhone,
+      AddressType,
     } = req.body;
 
     const existingAddress = await userAddress.findById(addressId);
@@ -114,6 +117,7 @@ const updateAddress = async (req, res) => {
         pinCode: pinCode || existingAddress.pinCode,
         Phone: Phone || existingAddress.Phone,
         alternatePhone: alternatePhone || existingAddress.alternatePhone,
+        AddressType: AddressType || existingAddress.AddressType,
       },
       { new: true }
     );

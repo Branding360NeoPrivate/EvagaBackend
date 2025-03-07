@@ -30,6 +30,10 @@ const userAddressModal = new mongoose.Schema({
     type: String,
     required: false,
   },
+  AddressType: {
+    type: String,
+    required: false,
+  },
   City: {
     type: String,
     required: true,

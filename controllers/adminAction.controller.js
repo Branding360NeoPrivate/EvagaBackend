@@ -142,7 +142,8 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
 
     const vendorsWithServiceData = await Vender.aggregate(pipeline);
 
-    const totalVendors = await Vender.countDocuments();
+    // const totalVendors = await Vender.countDocuments();
+    const totalVendors = await Vender.countDocuments(matchStage);
 
     const enrichedVendors = vendorsWithServiceData.map((vendor) => {
       const profileCompletion = calculateProfileCompletion(vendor);
