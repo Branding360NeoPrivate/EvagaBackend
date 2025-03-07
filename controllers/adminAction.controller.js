@@ -1451,7 +1451,7 @@ const downloadVendorsAsCSV = async (req, res) => {
     ];
     const csvParser = new Parser({ fields });
     const csv = csvParser.parse(csvData);
-    console.log("Vendors Data:", JSON.stringify(enrichedVendors, null, 2));
+    // console.log("Vendors Data:", JSON.stringify(enrichedVendors, null, 2));
 
     // Send CSV file as a response
     res.header("Content-Type", "text/csv");
