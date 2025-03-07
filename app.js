@@ -61,9 +61,11 @@ const app = express();
 // app.use(cors());
 const corsOptions = {
   origin: (origin, callback) => {
-    callback(null, true); // Allow all origins
+    callback(null, true); 
   },
-  credentials: true, // Allow cookies/auth headers
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", 
+  allowedHeaders: "Content-Type,Authorization",
+  credentials: true,
 };
 
 app.use(cors(corsOptions));
