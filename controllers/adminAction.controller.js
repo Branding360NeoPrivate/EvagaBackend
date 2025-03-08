@@ -11,7 +11,7 @@ import { S3Client, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import User from "../modals/user.modal.js";
 import OrderModel from "../modals/order.modal.js";
 import { Parser } from "json2csv";
-import fs from 'fs'
+import fs from "fs";
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -1107,7 +1107,6 @@ const getAdminDashboardDataHandle = async (req, res) => {
       }
     });
 
-
     res.status(200).json({
       totalVendors: totalVendors.length,
       totalRegisteredVendors,
@@ -1481,6 +1480,34 @@ const downloadVendorListing = async (req, res) => {
         },
       },
       {
+        $lookup: {
+          from: "categories", // Replace with the actual Category collection name
+          localField: "Category",
+          foreignField: "_id",
+          as: "categoryDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$categoryDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "subcategories", // Replace with the actual SubCategory collection name
+          localField: "SubCategory",
+          foreignField: "_id",
+          as: "subCategoryDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$subCategoryDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $unwind: {
           path: "$services",
         },
@@ -1492,17 +1519,19 @@ const downloadVendorListing = async (req, res) => {
           },
           vendorUserName: "$vendorDetails.userName",
           sku: "$services.sku",
+          categoryName: "$categoryDetails.name",
+          subCategoryName: "$subCategoryDetails.name",
         },
       },
     ];
 
-    const servicesWithVendorDetails = await vendorServiceListingFormModal.aggregate(pipeline);
+    const servicesWithVendorDetails =
+      await vendorServiceListingFormModal.aggregate(pipeline);
 
     if (!servicesWithVendorDetails.length) {
       return res.status(404).json({ message: "No services found" });
     }
 
-    // Prepare data for CSV
     const csvData = servicesWithVendorDetails.map((service) => {
       const serviceData = service.serviceData.reduce((acc, field) => {
         const { k: key, v: value } = field;
@@ -1515,25 +1544,26 @@ const downloadVendorListing = async (req, res) => {
       return {
         vendorUserName: service.vendorUserName || "N/A",
         sku: service.sku || "N/A",
+        categoryName: service.categoryName || "N/A",
+        subCategoryName: service.subCategoryName || "N/A",
         ...serviceData,
       };
     });
-
-    // Define CSV fields dynamically
     const fields = Object.keys(csvData[0]);
     const parser = new Parser({ fields });
     const csv = parser.parse(csvData);
 
-    // Send CSV file as a response
     res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", "attachment; filename=vendor_listing.csv");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=vendor_listing.csv"
+    );
     res.status(200).send(csv);
   } catch (error) {
     console.error("Error fetching vendor listing:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
-
 
 export {
   getAllVendorWithThereProfileStatusAndService,
