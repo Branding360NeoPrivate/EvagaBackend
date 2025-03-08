@@ -33,7 +33,7 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
           ? { verificationStatus: true }
           : filter === "Registered Vendors"
           ? { verificationStatus: false }
-          : {}, // No additional match for "all"
+          : {},
         {
           $or: [
             { name: { $regex: searchTerm, $options: "i" } },
@@ -46,7 +46,7 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
     };
 
     const pipeline = [
-      searchTerm || filter !== "all" ? { $match: matchStage } : null, // Apply $match only if searchTerm or filter is specified
+      searchTerm || filter !== "all" ? { $match: matchStage } : null,
       {
         $lookup: {
           from: "vendorservicelisitingforms",
@@ -56,18 +56,43 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
         },
       },
       {
-        $unwind: {
-          path: "$serviceListing",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
         $addFields: {
           numberOfServices: {
-            $cond: {
-              if: { $isArray: "$serviceListing.services" },
-              then: { $size: "$serviceListing.services" },
-              else: 0,
+            $sum: {
+              $map: {
+                input: "$serviceListing",
+                as: "serviceDoc",
+                in: {
+                  $cond: {
+                    if: { $isArray: "$$serviceDoc.services" },
+                    then: { $size: "$$serviceDoc.services" },
+                    else: 0,
+                  },
+                },
+              },
+            },
+          },
+          verifiedPackages: {
+            $sum: {
+              $map: {
+                input: "$serviceListing",
+                as: "serviceDoc",
+                in: {
+                  $cond: {
+                    if: { $isArray: "$$serviceDoc.services" },
+                    then: {
+                      $size: {
+                        $filter: {
+                          input: "$$serviceDoc.services",
+                          as: "service",
+                          cond: { $eq: ["$$service.packageStatus", "Verified"] },
+                        },
+                      },
+                    },
+                    else: 0,
+                  },
+                },
+              },
             },
           },
         },
@@ -112,6 +137,7 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
         $group: {
           _id: "$_id",
           vendorData: { $first: "$$ROOT" },
+          serviceListing: { $push: "$serviceListing" },
           categoriesOfServices: {
             $push: "$businessDetails.categoriesOfServices",
           },
@@ -121,6 +147,7 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
         $addFields: {
           "vendorData.businessDetails.categoriesOfServices":
             "$categoriesOfServices",
+          "vendorData.serviceListing": "$serviceListing",
         },
       },
       {
@@ -130,7 +157,16 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
       },
       {
         $project: {
-          serviceListing: 0,
+          // serviceListing: 1,
+          businessDetails: 1,
+          name: 1,
+          phoneNumber: 1,
+          email: 1,
+          userName: 1,
+          verificationStatus: 1,
+          numberOfServices: 1,
+          verifiedPackages: 1,
+          createdAt: 1,
         },
       },
       {
@@ -140,11 +176,10 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
       },
       { $skip: skip },
       { $limit: limit },
-    ].filter(Boolean); // Remove null values from the array
+    ].filter(Boolean);
 
     const vendorsWithServiceData = await Vender.aggregate(pipeline);
 
-    // const totalVendors = await Vender.countDocuments();
     const totalVendors = await Vender.countDocuments(matchStage);
 
     const enrichedVendors = vendorsWithServiceData.map((vendor) => {
@@ -168,6 +203,7 @@ const getAllVendorWithThereProfileStatusAndService = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 const vendorVerifyDocument = async (req, res) => {
   const { documentId } = req.params;
@@ -604,40 +640,25 @@ const getAllVendorsPackage = async (req, res) => {
   const searchTerm = req.query.search || "";
   const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 
+
   try {
     const matchStage = searchTerm
-      ? {
-          $match: {
-            $or: [
-              {
-                "services.values.Title": { $regex: searchTerm, $options: "i" },
-              },
-              {
-                "services.values.VenueName": {
-                  $regex: searchTerm,
-                  $options: "i",
-                },
-              },
-              {
-                "services.values.FoodTruckName": {
-                  $regex: searchTerm,
-                  $options: "i",
-                },
-              },
-            ],
-          },
-        }
-      : null;
+    ? {
+        $match: {
+          $or: [
+            { "services.values.Title": { $regex: searchTerm, $options: "i" } },
+            { "services.values.VenueName": { $regex: searchTerm, $options: "i" } },
+            { "services.values.FoodTruckName": { $regex: searchTerm, $options: "i" } },
+            { "vendorDetails.userName": { $regex: searchTerm, $options: "i" } },
+            { "vendorDetails.name": { $regex: searchTerm, $options: "i" } },
+          ],
+        },
+      }
+    : null;
 
-    const pipeline = [];
-
-    if (matchStage) {
-      pipeline.push(matchStage);
-    }
-
-    pipeline.push(
+    const pipeline = [
       { $unwind: "$services" },
-
+    
       {
         $lookup: {
           from: "categories",
@@ -652,7 +673,6 @@ const getAllVendorsPackage = async (req, res) => {
           preserveNullAndEmptyArrays: true,
         },
       },
-
       {
         $addFields: {
           categoryName: "$categoryDetails.name",
@@ -677,6 +697,13 @@ const getAllVendorsPackage = async (req, res) => {
           vendorName: "$vendorDetails.userName",
         },
       },
+    ];
+    
+    if (matchStage) {
+      pipeline.push(matchStage);
+    }
+    
+    pipeline.push(
       {
         $project: {
           "services.values.Title": 1,
@@ -693,9 +720,9 @@ const getAllVendorsPackage = async (req, res) => {
       },
       {
         $sort: {
-          "serviceDetails.values.Title": sortOrder,
-          "serviceDetails.values.FoodTruckName": sortOrder,
-          "serviceDetails.values.VenueName": sortOrder,
+          "services.values.Title": sortOrder,
+          "services.values.FoodTruckName": sortOrder,
+          "services.values.VenueName": sortOrder,
         },
       },
       {
@@ -705,6 +732,7 @@ const getAllVendorsPackage = async (req, res) => {
         },
       }
     );
+    
 
     const AllPacakage = await vendorServiceListingFormModal.aggregate(pipeline);
     const allPackages = AllPacakage[0].data;
@@ -907,14 +935,17 @@ const getAllVendorWithNumberOfService = async (req, res) => {
       },
       {
         $addFields: {
-          totalBookings: { $size: "$vendorOrders" }, // Count the total bookings for each vendor
+          totalBookings: { $size: "$vendorOrders" }, 
         },
       },
       {
         $match: {
-          name: { $regex: searchTerm, $options: "i" },
-        },
+          $or: [
+            { name: { $regex: searchTerm, $options: "i" } },
+          ]
+        }
       },
+      
       {
         $sort: { numberOfServices: sortOrder },
       },
