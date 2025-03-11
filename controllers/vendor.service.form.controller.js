@@ -608,18 +608,28 @@ const updateOneVenderService = async (req, res) => {
           if (key === "AddOns") {
             const isEffectivelyEmpty =
               Array.isArray(value.items) &&
-              value.items.every(item =>
-                Object.values(item).every(val => val === "")
+              value.items.every((item) =>
+                Object.values(item).every((val) => val === "")
               );
-          
+
             if (isEffectivelyEmpty) {
-              // Mark it as null or remove from `transformedValues` but continue the logic
-              transformedValues[key] = null; // You could use `undefined` or simply skip setting it.
-              continue; // Continue to the next loop iteration
+              transformedValues[key] = null;
+              continue;
             }
           }
-          
-          
+          if (key === "Package") {
+            const isEffectivelyEmpty =
+              Array.isArray(value.items) &&
+              value.items.every((item) =>
+                Object.values(item).every((val) => val === "")
+              );
+
+            if (isEffectivelyEmpty) {
+              transformedValues[key] = null;
+              continue;
+            }
+          }
+
           if (type === "radio") {
             const selectedItem = value?.items.find((item) => item.checked);
 
