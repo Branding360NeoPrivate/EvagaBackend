@@ -30,6 +30,7 @@ router
   .post(
     
     uploadAndMoveS3("service", [
+      "image/PNG",
       "image/png",
       "image/jpg",
       "image/jpeg",
