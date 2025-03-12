@@ -136,7 +136,7 @@ const getOneAdmin = async (req, res) => {
 
   try {
     const admin = await Admin.findById(userId).select(
-      "-password -updatedAt -createdAt"
+      "-password -updatedAt -createdAt -refreshToken"
     );
     if (!admin) {
       return res.status(404).json({ message: "Admin not found." });
