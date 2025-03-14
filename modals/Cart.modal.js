@@ -34,7 +34,6 @@ const CartSchema = new mongoose.Schema(
           {
             sessionName: {
               type: String,
-              // required: true,
             },
             sessionPrice: {
               type: Number,
@@ -70,6 +69,24 @@ const CartSchema = new mongoose.Schema(
         totalPrice: {
           type: Number,
           required: true,
+        },
+        itemDiscount: {
+          type: Number,
+          default: 0,
+        },
+        finalPrice: {
+          type: Number,
+          required: false,
+        },
+        setupCost: {
+          type: Number,
+          required: false,
+          default: 0,
+        },
+        security: {
+          type: Number,
+          required: false,
+          default: 0,
         },
       },
     ],

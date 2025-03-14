@@ -452,6 +452,7 @@ const addVenderService = async (req, res) => {
     });
 
     await submission.save();
+    res.status(201).json({ message: "Form submission created successfully" });
     const vendor = await Vender.findById(vendorId);
     await sendEmailWithTemplete(
       "vendorSeviceAddNewService",
@@ -461,7 +462,6 @@ const addVenderService = async (req, res) => {
         vendorName: vendor?.name,
       }
     );
-    res.status(201).json({ message: "Form submission created successfully" });
   } catch (error) {
     console.error("Error creating submission:", error);
     // Delete any uploaded files

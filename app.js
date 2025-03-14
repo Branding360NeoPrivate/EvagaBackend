@@ -34,6 +34,8 @@ import recentView from "./routes/recentlyViewed.routes.js";
 import distanceRoutes from "./routes/distanceRoutes.js";
 import blog from "./routes/blog.routes.js";
 import newsletter from "./routes/newsLetter.routes.js";
+import logerror from "./routes/errorLog.routes.js";
+import review from "./routes/review.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
@@ -154,7 +156,9 @@ app.use("/api/v1/Query", Query);
 app.use("/api/v1/recentView", recentView);
 app.use("/api/v1/distance", distanceRoutes);
 app.use("/api/v1/blog", blog);
+app.use("/api/v1/review", review);
 app.use("/api/v1/newsletter", newsletter);
+app.use("/api/v1/logerror", logerror);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });

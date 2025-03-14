@@ -290,7 +290,7 @@ const downloadFromS3 = async (bucket, key) => {
   const { Body } = await s3.send(
     new GetObjectCommand({ Bucket: bucket, Key: key })
   );
-  return Buffer.from(await Body.transformToByteArray());
+  return Buffer.from(await Body.transformToByteArray()); // add stream
 };
 
 // Upload file to S3
@@ -564,7 +564,7 @@ export const processAndTransferFiles = async (req, res, next) => {
 
   try {
     // Process all files in parallel
-    await Promise.all(
+    await Promise.all(// add chunk of 5
       req.files.map(async (file) => {
         if (!file.s3Key) {
           console.warn(`No S3 key for file: ${file.originalname}`);
@@ -574,7 +574,7 @@ export const processAndTransferFiles = async (req, res, next) => {
         console.log(`Processing: ${file.s3Key}`);
 
         // Download original file
-        const originalBuffer = await downloadFromS3(privateBucket, file.s3Key);
+        const originalBuffer = await downloadFromS3(privateBucket, file.s3Key); //add chunks and coverimage will go directly
 
         let finalBuffer;
         if (file.mimetype.startsWith("image/")) {
