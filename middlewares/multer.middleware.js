@@ -8,9 +8,7 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
-import dotenv from "dotenv";
 
-dotenv.config();
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -236,6 +234,61 @@ export const uploadS3 = (folderName, allowedTypes) =>
 //   };
 // };
 
+// export const uploadAndMoveS3 = (folderName, allowedTypes) => {
+//   const upload = multer({
+//     storage: multer.memoryStorage(),
+//     fileFilter: (req, file, cb) => {
+//       if (allowedTypes.includes(file.mimetype)) {
+//         cb(null, true);
+//       } else {
+//         const error = new Error(`Unsupported file type: ${file.mimetype}`);
+//         cb(error, false);
+//       }
+//     },
+//   }).any();
+
+//   return async (req, res, next) => {
+//     upload(req, res, async (err) => {
+//       if (err) {
+//         return res.status(400).json({ error: err.message });
+//       }
+
+//       const privateBucket = process.env.PRIVATE_BUCKET_NAME;
+
+//       try {
+//         for (const file of req.files) {
+//           const uniqueName = `${Date.now()}-${file.originalname}`;
+//           const privateKey = `${folderName}/${uniqueName}`;
+
+//           try {
+//             // Upload original file to private bucket
+//             await s3.send(
+//               new PutObjectCommand({
+//                 Bucket: privateBucket,
+//                 Key: privateKey,
+//                 Body: file.buffer, // add streaming
+//                 ContentType: file.mimetype,
+//               })
+//             );
+
+//             console.log(`Uploaded original to private bucket: ${privateKey}`);
+
+//             // Attach S3 location to file object for later processing
+//             file.s3Key = privateKey;
+//           } catch (innerError) {
+//             console.error(`Error uploading ${uniqueName}:`, innerError);
+//             throw innerError;
+//           }
+//         }
+
+//         next();
+//       } catch (outerError) {
+//         console.error("Error uploading files:", outerError);
+//         return res.status(500).json({ error: "Error processing files" });
+//       }
+//     });
+//   };
+// };
 export const uploadAndMoveS3 = (folderName, allowedTypes) => {
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -243,7 +296,8 @@ export const uploadAndMoveS3 = (folderName, allowedTypes) => {
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new Error("Unsupported file type"), false);
+        const error = new Error(`Unsupported file type: ${file.mimetype}`);
+        cb(error, false);
       }
     },
   }).any();
@@ -254,43 +308,8 @@ export const uploadAndMoveS3 = (folderName, allowedTypes) => {
         return res.status(400).json({ error: err.message });
       }
 
-      const privateBucket = process.env.PRIVATE_BUCKET_NAME;
-
-      try {
-        // if (!req.files || req.files.length === 0) {
-        //   return res.status(400).json({ error: "No files uploaded" });
-        // }
-
-        for (const file of req.files) {
-          const uniqueName = `${Date.now()}-${file.originalname}`;
-          const privateKey = `${folderName}/${uniqueName}`;
-
-          try {
-            // Upload original file to private bucket
-            await s3.send(
-              new PutObjectCommand({
-                Bucket: privateBucket,
-                Key: privateKey,
-                Body: file.buffer,
-                ContentType: file.mimetype,
-              })
-            );
-
-            console.log(`Uploaded original to private bucket: ${privateKey}`);
-
-            // Attach S3 location to file object for later processing
-            file.s3Key = privateKey;
-          } catch (innerError) {
-            console.error(`Error uploading ${uniqueName}:`, innerError);
-            throw innerError;
-          }
-        }
-
-        next();
-      } catch (outerError) {
-        console.error("Error uploading files:", outerError);
-        return res.status(500).json({ error: "Error processing files" });
-      }
+      // Attach files to req.files for later processing
+      next();
     });
   };
 };
