@@ -1174,31 +1174,41 @@ const updateOneVenderService = async (req, res) => {
             };
           }
 
-          // Handle CoverImage
           if (key === "CoverImage") {
-            const oldCoverImage =
-              existingService.values?.CoverImage?.[0] || null;
-
-            // Extract preserved CoverImage (string) from the request body
-            const preservedCoverImage =
-              typeof value.items === "string" ? value.items : null;
-
-            // Upload new CoverImage if provided in `req.files`
-            const newCoverImage = await uploadFilesToS3(
-              req.files,
-              `CoverImage_${serviceIndex}_`,
-              publicBucket,
-              1 // Limit to 1 image
-            );
-
-            // Delete old CoverImage if it's not in the new payload
-            if (oldCoverImage && oldCoverImage !== preservedCoverImage) {
-              await deleteFilesFromS3([oldCoverImage], publicBucket);
+            // Get the existing CoverImage from the database (if any)
+            const oldCoverImage = existingService.values?.CoverImage?.[0] || null;
+          
+            // Ensure value.items is always an array
+            const preservedCoverImage = Array.isArray(value.items)
+              ? value.items[0] // If it's already an array, take the first item
+              : value.items; // If it's a string, use it directly
+          
+            // Check if a new CoverImage is provided in `req.files`
+            const newCoverImage = req.files
+              ? await uploadFilesToS3(
+                  req.files,
+                  `CoverImage_${serviceIndex}_`,
+                  publicBucket,
+                  1 // Limit to 1 image
+                )
+              : null;
+          
+            // Determine the final CoverImage to use
+            if (newCoverImage && newCoverImage[0]) {
+              // If a new CoverImage is uploaded, use it
+              value.items = [newCoverImage[0]]; // Store as an array
+          
+              // Delete the old CoverImage if it exists and is different from the new one
+              if (oldCoverImage && oldCoverImage !== newCoverImage[0]) {
+                await deleteFilesFromS3([oldCoverImage], publicBucket);
+              }
+            } else if (preservedCoverImage) {
+              // If no new CoverImage is uploaded but a preserved one exists, use it
+              value.items = [preservedCoverImage]; // Store as an array
+            } else {
+              // If no new or preserved CoverImage is available, keep the old one
+              value.items = oldCoverImage ? [oldCoverImage] : []; // Store as an array
             }
-
-            // Use the new or preserved CoverImage
-            value.items =
-              newCoverImage[0] || preservedCoverImage || oldCoverImage;
           }
 
           // Handle ProductImage
