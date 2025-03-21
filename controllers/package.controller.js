@@ -409,6 +409,7 @@ const getAllPackage = async (req, res) => {
               },
             ],
           }),
+          
           ...(locationTypes.length > 0 && {
             "serviceDetails.values.LocationType": {
               $regex: new RegExp(locationTypes, "i"),

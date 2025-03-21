@@ -3,8 +3,6 @@ import { getTemplate } from "./template.js";
 import dotenv from "dotenv";
 dotenv.config();
 const mailchimpClient = mailchimp(process.env.MailChimpKey);
-console.log(process.env.MailChimpKey);
-
 export const sendEmail = async (
   templateName,
   recipientEmail,

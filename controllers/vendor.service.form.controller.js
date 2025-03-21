@@ -15,6 +15,7 @@ import { Readable } from "stream";
 import { Upload } from "@aws-sdk/lib-storage";
 import { S3Client } from "@aws-sdk/client-s3";
 import mongoose from "mongoose";
+import { sendTemplateMessage } from "./wati.controller.js";
 const CLIENT_SECRET_PATH = "./client_secret.json";
 const TOKEN_PATH = "../token.json";
 const SCOPES = ["https://www.googleapis.com/auth/youtube.upload"];
@@ -551,7 +552,7 @@ const addVenderService = async (req, res) => {
 
       coverImageUrl = `${publicKey}`;
     }
-    // Save text data first
+
     const submission = new VendorServiceLisitingForm({
       vendorId,
       formTemplateId,
@@ -562,11 +563,12 @@ const addVenderService = async (req, res) => {
       services: services.map((service) => ({
         menuTemplateId: service.menuTemplateId || null,
         values: service.values.reduce((acc, value) => {
+          console.log(acc[value.key], value.items);
+
           acc[value.key] = value.items;
 
-          // Add coverImage URL if it exists
           if (value.key === "CoverImage" && coverImageUrl) {
-            acc[value.key] = [coverImageUrl]; // Ensure it's an array
+            acc[value.key] = [coverImageUrl];
           }
 
           return acc;
@@ -583,13 +585,11 @@ const addVenderService = async (req, res) => {
 
     await submission.save();
 
-    // Respond to the user immediately
     res.status(201).json({
       message:
         "Form submission created successfully and files are uploading. Please wait until the upload process is complete before navigating away from the page.",
     });
 
-    // Handle file uploads in the background
     processFilesAsync(req.files, services, submission._id, vendorId);
   } catch (error) {
     console.error("Error creating submission:", error);
@@ -665,7 +665,6 @@ const processFilesAsync = async (files, services, submissionId, vendorId) => {
     const formattedServices = services.map((service, serviceIndex) => {
       const existingService = existingSubmission.services[serviceIndex];
 
-      // Use the existing sku or generate a new one if missing
       const sku =
         existingService?.sku ||
         generateUniqueSKU(mongoose.model("VendorServiceLisitingForm"));
@@ -1087,7 +1086,6 @@ const updateOneVenderService = async (req, res) => {
         const transformedValues = {};
         const existingService = vendorService.services[serviceIndex] || {};
 
-        // Ensure sku is preserved or generated
         const sku =
           existingService.sku ||
           (await generateUniqueSKU(
@@ -1098,7 +1096,6 @@ const updateOneVenderService = async (req, res) => {
           const key = value.key;
           const type = value.type;
 
-          // Handle AddOns and Package
           if (key === "AddOns" || key === "Package") {
             const isEffectivelyEmpty =
               Array.isArray(value.items) &&
@@ -1111,8 +1108,17 @@ const updateOneVenderService = async (req, res) => {
               continue;
             }
           }
+          if (key === "CustomThemeRequest") {
+            const selectedOption = value.items.find((item) => item.checked);
 
-          // Handle radio type
+            if (selectedOption) {
+              transformedValues[key] = selectedOption.key;
+            } else {
+              transformedValues[key] = "No";
+            }
+            continue;
+          }
+
           if (type === "radio") {
             const selectedItem = value?.items.find((item) => item.checked);
             if (selectedItem) {
@@ -1120,7 +1126,6 @@ const updateOneVenderService = async (req, res) => {
             }
           }
 
-          // Handle Portfolio
           if (key === "Portfolio") {
             const oldPhotos = existingService.values?.Portfolio?.photos || [];
             const oldVideos = existingService.values?.Portfolio?.videos || [];
@@ -1176,13 +1181,14 @@ const updateOneVenderService = async (req, res) => {
 
           if (key === "CoverImage") {
             // Get the existing CoverImage from the database (if any)
-            const oldCoverImage = existingService.values?.CoverImage?.[0] || null;
-          
+            const oldCoverImage =
+              existingService.values?.CoverImage?.[0] || null;
+
             // Ensure value.items is always an array
             const preservedCoverImage = Array.isArray(value.items)
               ? value.items[0] // If it's already an array, take the first item
               : value.items; // If it's a string, use it directly
-          
+
             // Check if a new CoverImage is provided in `req.files`
             const newCoverImage = req.files
               ? await uploadFilesToS3(
@@ -1192,12 +1198,12 @@ const updateOneVenderService = async (req, res) => {
                   1 // Limit to 1 image
                 )
               : null;
-          
+
             // Determine the final CoverImage to use
             if (newCoverImage && newCoverImage[0]) {
               // If a new CoverImage is uploaded, use it
               value.items = [newCoverImage[0]]; // Store as an array
-          
+
               // Delete the old CoverImage if it exists and is different from the new one
               if (oldCoverImage && oldCoverImage !== newCoverImage[0]) {
                 await deleteFilesFromS3([oldCoverImage], publicBucket);
@@ -1211,31 +1217,23 @@ const updateOneVenderService = async (req, res) => {
             }
           }
 
-          // Handle ProductImage
           if (key === "ProductImage") {
             const oldImages = existingService.values?.ProductImage || [];
-
-            // Extract preserved images (strings) from the request body
             const preservedImages =
               value.items?.filter((image) => typeof image === "string") || [];
-
-            // Upload new ProductImages
             const newImages = await uploadFilesToS3(
               req.files,
               `ProductImage_${serviceIndex}_`,
               publicBucket,
-              3 // Limit to 3 images
+              3
             );
 
-            // Identify images to delete (existing images not in the new payload)
             const imagesToDelete = oldImages.filter(
               (image) => !preservedImages.includes(image)
             );
 
-            // Delete old images from S3
             await deleteFilesFromS3(imagesToDelete, publicBucket);
 
-            // Combine preserved and new images
             value.items = [...preservedImages, ...newImages].filter(Boolean);
           }
 
@@ -1333,7 +1331,6 @@ const deleteFilesFromS3 = async (fileUrls, bucket) => {
   );
 };
 
-// ✅ Extracts the object key from an S3 URL
 const extractS3Key = (s3Url) => {
   if (!s3Url || typeof s3Url !== "string") return null;
   const parts = s3Url.split("/");
@@ -1507,6 +1504,9 @@ const VerifyService = async (req, res) => {
     packageToUpdate.verifiedAt = Date.now();
     packageToUpdate.verifiedBy = req.user._id;
     await verifiedService.save();
+    res.status(200).json({
+      message: "Vendor service Verification successfully",
+    });
     const vendor = await Vender.findById(verifiedService?.vendorId);
     await sendEmailWithTemplete(
       "vendorServiceauditnotification",
@@ -1518,9 +1518,11 @@ const VerifyService = async (req, res) => {
         dashboardLink: "https://evagaentertainment.com",
       }
     );
-    res.status(200).json({
-      message: "Vendor service Verification successfully",
-    });
+    await sendTemplateMessage(
+      vendor?.phoneNumber,
+      "service_live_notification",
+      []
+    );
   } catch (error) {
     res.status(500).json({
       message: "Failed to verify vendor service",
