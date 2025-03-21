@@ -116,6 +116,7 @@ const loginVendor = async (req, res) => {
   if (!password) {
     return res.status(400).json({ error: "Password is required" });
   }
+
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
 
   try {
@@ -126,27 +127,28 @@ const loginVendor = async (req, res) => {
     if (!user) {
       return res.status(400).json({ error: "Invalid credentials" });
     }
+
+    // Check if the profile is active
+    if (!user.profileStatus) {
+      return res.status(403).json({ error: "Profile inactive. Please contact support." });
+    }
+
     const isPasswordValid = await user.isPasswordCorrect(password);
     if (!isPasswordValid) {
       return res.status(400).json({ error: "Incorrect password" });
     }
+
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
       user._id,
       "vendor"
     );
 
-    return (
-      res
-        .status(200)
-        // .cookie("accessToken", accessToken, options)
-        // .cookie("refreshToken", refreshToken, options)
-        .json({
-          message: "User logged in successfully",
-          role: "vendor",
-          token: accessToken,
-          userId: user._id,
-        })
-    );
+    return res.status(200).json({
+      message: "User logged in successfully",
+      role: "vendor",
+      token: accessToken,
+      userId: user._id,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
@@ -313,7 +315,6 @@ const updateVendorProfile = async (req, res) => {
 const updateProfileStatus = async (req, res) => {
   const { venderID, profileStatus } = req.body;
 
-  // Validate inputs
   if (!venderID) {
     return res.status(400).json({
       error: "Invalid request. Please provide a valid venderID.",
