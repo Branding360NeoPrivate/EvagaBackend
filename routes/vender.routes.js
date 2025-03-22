@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upload } from "../middlewares/multer.middleware.js";
+import { upload, uploadToS3 } from "../middlewares/multer.middleware.js";
 import verifyJwt from "../middlewares/auth.middleware.js";
 import {
   registerVendor,
@@ -46,7 +46,7 @@ router
   .route("/updateVenderProfilePicture/:vendorID")
   .post(
     verifyJwt(["vendor", "admin"]),
-    upload("profilePic", [
+    uploadToS3("profilePic", [
       "image/png",
       "image/jpg",
       "image/jpeg",

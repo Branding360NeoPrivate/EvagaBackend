@@ -8,7 +8,7 @@ import {
   getOneBlogForUser,
   updateBlog,
 } from "../controllers/blog.controller.js";
-import { upload } from "../middlewares/multer.middleware.js";
+import { upload, uploadToS3 } from "../middlewares/multer.middleware.js";
 import verifyJwt from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -16,7 +16,7 @@ const router = express.Router();
 router.post(
   "/create-blog",
   verifyJwt(["admin"]),
-  upload("blog", ["image/png", "image/jpg", "image/jpeg", "image/webp"]).single(
+  uploadToS3("blog", ["image/png", "image/jpg", "image/jpeg", "image/webp"]).single(
     "coverImage"
   ),
   createBlog
@@ -26,7 +26,7 @@ router.get("/get-All-Blog", upload().none(), getAllBlogs);
 router.post(
   "/update-one-blog/:id",
   verifyJwt(["admin"]),
-  upload("blog", ["image/png", "image/jpg", "image/jpeg", "image/webp"]).single(
+  uploadToS3("blog", ["image/png", "image/jpg", "image/jpeg", "image/webp"]).single(
     "coverImage"
   ),
   updateBlog

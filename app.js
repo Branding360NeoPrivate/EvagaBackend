@@ -36,6 +36,7 @@ import blog from "./routes/blog.routes.js";
 import newsletter from "./routes/newsLetter.routes.js";
 import logerror from "./routes/errorLog.routes.js";
 import review from "./routes/review.routes.js";
+import helmet from "helmet";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
@@ -74,8 +75,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// updateVendors();
-// removed cors
+app.use(helmet());
+
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
