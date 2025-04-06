@@ -62,19 +62,19 @@
   <body>
     <div class="email-container">
       <h2>🎉 New Booking Alert – Confirm Now!</h2>
-      <p>Dear <strong>[Vendor Name]</strong>,</p>
+      <p>Dear <strong><%= vendorName %></strong>,</p>
       <p>
         Great news! A customer has booked your services for an upcoming event.
       </p>
       <p><strong>Event Details:</strong></p>
       <ul>
-        <li>🔹 <strong>Event Type:</strong> [Wedding/Corporate/Other]</li>
-        <li>🔹 <strong>Date & Time:</strong> [DD/MM/YYYY | HH:MM]</li>
-        <li>🔹 <strong>Location:</strong> [Event Venue]</li>
+        <li>🔹 <strong>Event Type:</strong> <%= eventType %></li>
+        <li>🔹 <strong>Date & Time:</strong> <%= eventDate %> | <%= eventTime %></li>
+        <li>🔹 <strong>Location:</strong> <%= eventLocation %></li>
       </ul>
       <p><strong>Customer Details:</strong></p>
       <ul>
-        <li>👤 <strong>Name:</strong> [Customer Name]</li>
+        <li>👤 <strong>Name:</strong> <%= customerName %></li>
       </ul>
       <p>
         Please log in to your dashboard to review and confirm the booking

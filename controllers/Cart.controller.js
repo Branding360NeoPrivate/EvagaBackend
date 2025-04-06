@@ -20,9 +20,25 @@ const addToCart = async (req, res) => {
       time,
       security,
       setupCost,
+      travelCharge,
+      delivery,
     } = req.body;
 
     selectedSessions = selectedSessions ? JSON.parse(selectedSessions) : [];
+    travelCharge = travelCharge ? JSON.parse(travelCharge) : [];
+    if (travelCharge) {
+      travelCharge = {
+        FreeUpto: Number(travelCharge["Free Upto"]) || 0,
+        Thereon: Number(travelCharge.thereon) || 0,
+        uom: travelCharge.Uom || "Per Km",
+      };
+    } else {
+      travelCharge = {
+        FreeUpto: 0,
+        Thereon: 0,
+        uom: "Per Km",
+      };
+    }
 
     const basePrice = defaultPrice ? Number(defaultPrice) : 0;
     const service = await vendorServiceListingFormModal.findById(serviceId);
@@ -63,7 +79,11 @@ const addToCart = async (req, res) => {
       0
     );
     const totalPrice =
-      basePrice + sessionsTotalPrice + Number(setupCost) + Number(security);
+      basePrice +
+      sessionsTotalPrice +
+      Number(setupCost) +
+      Number(security) +
+      Number(delivery);
     let cart = await Cart.findOne({ userId });
     if (!cart) {
       cart = new Cart({ userId, items: [] });
@@ -86,6 +106,8 @@ const addToCart = async (req, res) => {
         time,
         setupCost,
         security,
+        delivery,
+        travelCharge,
       };
     } else {
       cart.items.push({
@@ -101,6 +123,8 @@ const addToCart = async (req, res) => {
         time,
         setupCost: setupCost ? Number(setupCost) : 0,
         security: security ? Number(security) : 0,
+        delivery: delivery ? Number(delivery) : 0,
+        travelCharge,
       });
     }
 
@@ -138,7 +162,6 @@ const getCart = async (req, res) => {
       (platformFee * gstPercentagePlatform) / 100
     );
 
-    // If a coupon code is sent in the request, validate and apply it
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode });
 
@@ -192,7 +215,7 @@ const getCart = async (req, res) => {
         let gstPercentage = 18;
         let gstAmount = 0;
         let itemDiscount = 0;
-        let finalAmount = item.totalPrice; // Default to full price
+        let finalAmount = item.totalPrice;
         let packageDetails = null;
         let categoryName = null;
         let vendorName = null;
@@ -241,18 +264,15 @@ const getCart = async (req, res) => {
           }
         }
 
-        // Calculate the item discount based on the total discount
         itemDiscount = parseFloat(
           ((item.totalPrice / totalOfCart) * discount).toFixed(2)
         );
         finalAmount = parseFloat((item.totalPrice - itemDiscount).toFixed(2));
 
-        // Calculate GST based on the final amount after the discount
         gstAmount = parseFloat(
           ((finalAmount * gstPercentage) / 100).toFixed(2)
         );
 
-        // Update the item in the database
         item.itemDiscount = itemDiscount;
         item.finalPrice = finalAmount;
 
@@ -269,7 +289,6 @@ const getCart = async (req, res) => {
       })
     );
 
-    // Save the updated cart
     cart.items = updatedItems.map((item) => ({
       ...item,
       itemDiscount: item.itemDiscount,
@@ -277,22 +296,12 @@ const getCart = async (req, res) => {
     }));
     await cart.save();
 
-    // const totalGst = updatedItems.reduce(
-    //   (total, item) => total + item.gstAmount,
-    //   0
-    // );
-    // const totalBeforeDiscount =
-    //   totalOfCart + platformFee + platformGstAmount + totalGst;
-    // const totalAfterDiscount = Math.max(totalBeforeDiscount - discount, 0);
-    // onst totalAfterDiscount = Math.max(totalOfCart - discount, 0);
-
-    // Recalculate GST on the discounted total
     const totalAfterDiscount = Math.max(totalOfCart - discount, 0);
     const totalGst = updatedItems.reduce((total, item) => {
       const itemPriceAfterDiscount =
-        (item.totalPrice / totalOfCart) * totalAfterDiscount; // Pro-rate the discount to each item
+        (item.totalPrice / totalOfCart) * totalAfterDiscount;
       const gstAmount = (itemPriceAfterDiscount * item.gstPercentage) / 100;
-      item.gstAmount = gstAmount; // Update the item with the recalculated GST
+      item.gstAmount = gstAmount;
       return total + gstAmount;
     }, 0);
 

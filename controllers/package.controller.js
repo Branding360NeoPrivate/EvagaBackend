@@ -598,5 +598,337 @@ const getOnepackage = async (req, res) => {
     });
   }
 };
+const getOnePackagePerCategory = async (req, res) => {
+  const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+  const eventTypes = req.query.eventTypes || [];
+  const locationTypes = req.query.locationTypes || [];
 
-export { getAllPackage, getOnepackage };
+  try {
+    const AllPacakage = await vendorServiceListingFormModal.aggregate([
+      {
+        $unwind: {
+          path: "$Category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          let: { categoryId: "$Category" },
+          pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$categoryId"] } } }],
+          as: "categoryData",
+        },
+      },
+      {
+        $lookup: {
+          from: "categoryfees",
+          localField: "Category",
+          foreignField: "categoryId",
+          as: "categoryFee",
+        },
+      },
+      {
+        $addFields: {
+          feesPercentage: {
+            $ifNull: [{ $arrayElemAt: ["$categoryFee.feesPercentage", 0] }, 12],
+          },
+        },
+      },
+      {
+        $unwind: "$services",
+      },
+      {
+        $addFields: {
+          serviceDetails: "$services",
+          categoryName: { $arrayElemAt: ["$categoryData.name", 0] },
+        },
+      },
+      {
+        $addFields: {
+          "serviceDetails.values": {
+            $mergeObjects: [
+              "$serviceDetails.values",
+              {
+                "Duration&Pricing": {
+                  $map: {
+                    input: {
+                      $ifNull: ["$serviceDetails.values.Duration&Pricing", []],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Amount: {
+                            $multiply: [
+                              { $toDouble: "$$item.Amount" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                SessionLength: {
+                  $map: {
+                    input: {
+                      $ifNull: ["$serviceDetails.values.SessionLength", []],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Amount: {
+                            $multiply: [
+                              { $toDouble: "$$item.Amount" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                "SessionLength&Pricing": {
+                  $map: {
+                    input: {
+                      $ifNull: [
+                        "$serviceDetails.values.SessionLength&Pricing",
+                        [],
+                      ],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Amount: {
+                            $multiply: [
+                              { $toDouble: "$$item.Amount" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                QtyPricing: {
+                  $map: {
+                    input: {
+                      $ifNull: ["$serviceDetails.values.QtyPricing", []],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Rates: {
+                            $multiply: [
+                              { $toDouble: "$$item.Rates" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                Price: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.Price", null] },
+                    then: {
+                      $multiply: [
+                        { $toDouble: "$serviceDetails.values.Price" },
+                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                      ],
+                    },
+                    else: "$serviceDetails.values.Price",
+                  },
+                },
+                price: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.price", null] },
+                    then: {
+                      $multiply: [
+                        { $toDouble: "$serviceDetails.values.price" },
+                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                      ],
+                    },
+                    else: "$serviceDetails.values.price",
+                  },
+                },
+                Pricing: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.Pricing", null] },
+                    then: {
+                      $multiply: [
+                        { $toDouble: "$serviceDetails.values.Pricing" },
+                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                      ],
+                    },
+                    else: "$serviceDetails.values.Pricing",
+                  },
+                },
+                Package: {
+                  $map: {
+                    input: { $ifNull: ["$serviceDetails.values.Package", []] },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Rates: {
+                            $multiply: [
+                              { $toDouble: "$$item.Rates" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                "OrderQuantity&Pricing": {
+                  $map: {
+                    input: {
+                      $ifNull: [
+                        "$serviceDetails.values.OrderQuantity&Pricing",
+                        [],
+                      ],
+                    },
+                    as: "item",
+                    in: {
+                      $mergeObjects: [
+                        "$$item",
+                        {
+                          Rates: {
+                            $multiply: [
+                              { $toDouble: "$$item.Rates" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          "serviceDetails.status": true,
+          ...(eventTypes.length > 0 && {
+            $or: [
+              {
+                "serviceDetails.values.Event Type": {
+                  $regex: new RegExp(eventTypes, "i"),
+                },
+              },
+              {
+                "serviceDetails.values.EventType": {
+                  $regex: new RegExp(eventTypes, "i"),
+                },
+              },
+            ],
+          }),
+          ...(locationTypes.length > 0 && {
+            "serviceDetails.values.LocationType": {
+              $regex: new RegExp(locationTypes, "i"),
+            },
+          }),
+        },
+      },
+      {
+        $group: {
+          _id: "$Category",
+          package: { $first: "$$ROOT" },
+        },
+      },
+      {
+        $replaceRoot: { newRoot: "$package" },
+      },
+      {
+        $project: {
+          services: 0,
+          categoryData: 0,
+          "serviceDetails.menuTemplateId": 0,
+          "serviceDetails.cateringTemplateId": 0,
+          "serviceDetails.cateringValueInVenue": 0,
+          "serviceDetails.cateringPackageVenue": 0,
+          "serviceDetails.menu": 0,
+          "serviceDetails.values.AddOns": 0,
+          "serviceDetails.values.TravelCharges": 0,
+          "serviceDetails.values.Portfolio.photos": 0,
+          "serviceDetails.values.Portfolio.videos": 0,
+          "serviceDetails.values.Terms&Conditions": 0,
+          "serviceDetails.values.Type": 0,
+          "serviceDetails.values.Type": 0,
+          categoryFee: 0,
+          feesPercentage: 0,
+          Category: 0,
+          SubCategory: 0,
+          YearofExperience: 0,
+          AbouttheService: 0,
+          updatedAt: 0,
+          createdAt: 0,
+        },
+      },
+      {
+        $sort: {
+          "serviceDetails.values.Title": sortOrder,
+          "serviceDetails.values.FoodTruckName": sortOrder,
+          "serviceDetails.values.VenueName": sortOrder,
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      message: "Packages Fetched Successfully",
+      data: AllPacakage,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res
+      .status(500)
+      .json({ message: "Failed to fetch packages", error: error.message });
+  }
+};
+
+export { getAllPackage, getOnepackage,getOnePackagePerCategory };

@@ -7,6 +7,7 @@ import {
 const router = Router();
 
 router.route("/get-all-packages").get(getAllPackage);
+router.route("/getOnePackagePerCategory").get(getOnePackagePerCategory);
 router.route("/get-one-package/:serviceId/:packageid").get(getOnepackage);
 // router.route("/get-one-menu").get(verifyJwt(["admin"]), getMenuById);
 // router.route("/get-all-menu").get(verifyJwt(["admin"]), getAllMenus);

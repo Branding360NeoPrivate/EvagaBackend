@@ -15,12 +15,7 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
-const dummyOrder = {
-  orderId: "12345",
-  description:
-    "Customer Name: John Doe, Product: Laptop, Quantity: 1, Total: $1500",
-  date: "2025-03-04T12:00:00Z", // ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
-};
+
 export const validateOrder = async (req, res) => {
   try {
     const { orderId, paymentId, razorpaySignature } = req.body;
@@ -118,25 +113,6 @@ export const validateOrder = async (req, res) => {
       const user = await User.findById(order.userId);
       const invoiceBuffer = await generateInvoice(order);
 
-      const emailResponse = await sendEmail(
-        user?.email,
-        "Your Order Invoice",
-        "Thank you for your order! Please find your invoice attached.",
-        {
-          attachments: [
-            {
-              filename: `Invoice-${order._id}.pdf`,
-              content: invoiceBuffer,
-            },
-          ],
-        }
-      );
-      // await sendEmailWithTemplete(
-      //   "userBookingConfirmation",
-      //   user?.email,
-      //   "Your Booking is Confirmed! 🎉",
-      //   { customerName: user?.name }
-      // );
       for (const item of order.items) {
         const bookingData = {
           vendor: item.vendorId,
@@ -149,10 +125,6 @@ export const validateOrder = async (req, res) => {
 
         try {
           const bookingResult = await addOrderToVendorCalendor(bookingData);
-          console.log(
-            `Booking response for vendor ${item.vendorId}:`,
-            bookingResult
-          );
         } catch (error) {
           console.error(
             `Failed to book calendar for vendor ${item.vendorId}:`,
@@ -194,19 +166,4 @@ export const validateOrder = async (req, res) => {
     console.error("Error validating order:", error);
     return res.status(500).json({ success: false, error: error.message });
   }
-};
-
-const eventDetails = {
-  summary: "Team Meeting",
-  location: "Online",
-  description: "Discussing project updates and timelines.",
-  start: {
-    dateTime: "2025-03-06T09:00:00-07:00",
-    timeZone: "America/Los_Angeles",
-  },
-  end: {
-    dateTime: "2025-03-06T10:00:00-07:00",
-    timeZone: "America/Los_Angeles",
-  },
-  attendees: [{ email: "armanal3066@gmail.com" }],
 };

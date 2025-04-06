@@ -132,7 +132,9 @@ const loginVendor = async (req, res) => {
 
     // Check if the profile is active
     if (!user.profileStatus) {
-      return res.status(403).json({ error: "Profile inactive. Please contact support." });
+      return res
+        .status(403)
+        .json({ error: "Profile inactive. Please contact support." });
     }
 
     const isPasswordValid = await user.isPasswordCorrect(password);
@@ -782,7 +784,10 @@ const updateVendorProfilePicture = async (req, res) => {
         await s3Client.send(new DeleteObjectCommand(deleteParams));
         console.log(`Deleted old profile picture: ${oldProfilePic}`);
       } catch (s3Error) {
-        console.error("Failed to delete old profile picture from S3:", s3Error.message);
+        console.error(
+          "Failed to delete old profile picture from S3:",
+          s3Error.message
+        );
       }
     }
 
@@ -1222,6 +1227,78 @@ const verifyaadharotp = async (req, res) => {
       .json({ message: "Internal server error", error: error.message });
   }
 };
+const getVendorPinCode = async (req, res) => {
+  const { vendorId } = req.params;
+
+  try {
+    const vendor = await Vender.findOne({ _id: vendorId }).populate({
+      path: "businessDetails",
+      select: "pincode serviceableRadius",
+    });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    if (!vendor.businessDetails) {
+      return res.status(404).json({
+        success: false,
+        message: "Business details not found",
+      });
+    }
+
+    const { pincode, serviceableRadius } = vendor.businessDetails;
+    res.status(200).json({
+      success: true,
+      pincode,
+      serviceableRadius,
+    });
+  } catch (error) {
+    console.error("Error fetching vendor pincode:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+const getServiceableRadius = async (req, res) => {
+  const { vendorId } = req.params;
+  try {
+    const vendor = await Vender.findOne({ _id: vendorId }).populate({
+      path: "businessDetails",
+      select: "serviceableRadius",
+    });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    if (!vendor.businessDetails) {
+      return res.status(404).json({
+        success: false,
+        message: "Business details not found",
+      });
+    }
+
+    const { serviceableRadius } = vendor.businessDetails;
+    res.status(200).json({
+      success: true,
+      serviceableRadius,
+    });
+  } catch (error) {
+    console.error("Error fetching serviceableRadius:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 export {
   registerVendor,
@@ -1250,4 +1327,6 @@ export {
   sendaadharotp,
   verifyaadharotp,
   updateProfileStatus,
+  getVendorPinCode,
+  getServiceableRadius,
 };

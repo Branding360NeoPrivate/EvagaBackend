@@ -45,6 +45,7 @@ router.post(
     "image/bmp", // BMP
     "image/heif", // HEIF (High-Efficiency Image Format)
     "image/heic", // HEIC (used in iPhones for high-efficiency image compression)
+    "image/HEIC", // HEIC (used in iPhones for high-efficiency image compression)
     "image/svg+xml", // SVG (vector images, supported widely)
   ]).single("coverImage"),
   updateBlog
