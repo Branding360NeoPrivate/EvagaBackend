@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getAllPackage,
   getOnepackage,
+  getOnePackagePerCategory,
 } from "../controllers/package.controller.js";
 
 const router = Router();
