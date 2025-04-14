@@ -116,7 +116,6 @@ const createOrder = async (req, res) => {
 
       leftAmount = secondPart;
     } else if (numberOfParts === 3) {
-      // Calculate 50%, 30%, and 20% for 3 parts
       const firstPart = Math.floor(totalAmount * 0.5);
       const secondPart = Math.floor(totalAmount * 0.3);
       const thirdPart = totalAmount - firstPart - secondPart;
@@ -178,8 +177,12 @@ const createOrder = async (req, res) => {
         address: selectedAddress.address,
         addressLine1: selectedAddress.addressLine1,
         addressLine2: selectedAddress.addressLine2,
+        city: selectedAddress.City,
         state: selectedAddress.state,
         pinCode: selectedAddress.pinCode,
+        addressType: selectedAddress.AddressType,
+        phone: selectedAddress.Phone,
+        alternatePhone: selectedAddress.alternatePhone,
       },
       partialPayments,
       paymentStatus: numberOfParts > 1 ? "PENDING" : "PENDING",
