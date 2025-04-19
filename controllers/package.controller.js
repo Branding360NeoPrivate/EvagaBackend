@@ -638,9 +638,40 @@ const getOnePackagePerCategory = async (req, res) => {
         $unwind: "$services",
       },
       {
+        $lookup: {
+          from: "coupons",
+          let: {
+            serviceId: "$services._id",
+            currentDate: new Date(),
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$selectedpackage", { $toString: "$$serviceId" }] },
+                    { $lte: ["$startDate", "$$currentDate"] },
+                    { $gte: ["$endDate", "$$currentDate"] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "serviceDiscount",
+        },
+      },
+      {
+        $addFields: {
+          serviceDiscount: {
+            $ifNull: [{ $arrayElemAt: ["$serviceDiscount", 0] }, null],
+          },
+        },
+      },
+      {
         $addFields: {
           serviceDetails: "$services",
-          categoryName: { $arrayElemAt: ["$categoryData.name", 0] },
+          categoryName: "$categoryData.name",
+          SubcategoryName: "$SubCategoryData.name",
         },
       },
       {
@@ -649,6 +680,75 @@ const getOnePackagePerCategory = async (req, res) => {
             $mergeObjects: [
               "$serviceDetails.values",
               {
+                // "Duration&Pricing": {
+                //   $map: {
+                //     input: {
+                //       $ifNull: ["$serviceDetails.values.Duration&Pricing", []],
+                //     },
+                //     as: "item",
+                //     in: {
+                //       $mergeObjects: [
+                //         "$$item",
+                //         {
+                //           Amount: {
+                //             $let: {
+                //               vars: {
+                //                 withFees: {
+                //                   $multiply: [
+                //                     { $toDouble: "$$item.Amount" },
+                //                     {
+                //                       $add: [
+                //                         1,
+                //                         {
+                //                           $divide: [
+                //                             { $ifNull: ["$feesPercentage", 0] },
+                //                             100,
+                //                           ],
+                //                         },
+                //                       ],
+                //                     },
+                //                   ],
+                //                 },
+                //               },
+                //               in: {
+                //                 $cond: [
+                //                   {
+                //                     $and: [
+                //                       "$serviceDiscount",
+                //                       {
+                //                         $gt: [
+                //                           "$serviceDiscount.discountPercentage",
+                //                           0,
+                //                         ],
+                //                       },
+                //                     ],
+                //                   },
+                //                   {
+                //                     $multiply: [
+                //                       "$$withFees",
+                //                       {
+                //                         $subtract: [
+                //                           1,
+                //                           {
+                //                             $divide: [
+                //                               "$serviceDiscount.discountPercentage",
+                //                               100,
+                //                             ],
+                //                           },
+                //                         ],
+                //                       },
+                //                     ],
+                //                   },
+                //                   "$$withFees",
+                //                 ],
+                //               },
+                //             },
+                //           },
+                //         },
+                //       ],
+                //     },
+                //   },
+                // },
                 "Duration&Pricing": {
                   $map: {
                     input: {
@@ -660,15 +760,66 @@ const getOnePackagePerCategory = async (req, res) => {
                         "$$item",
                         {
                           Amount: {
-                            $multiply: [
-                              { $toDouble: "$$item.Amount" },
-                              {
-                                $add: [
-                                  1,
-                                  { $divide: ["$feesPercentage", 100] },
+                            $let: {
+                              vars: {
+                                withFees: {
+                                  $multiply: [
+                                    {
+                                      $toDouble: {
+                                        $replaceOne: {
+                                          input: "$$item.Amount",
+                                          find: ",",
+                                          replacement: "",
+                                        },
+                                      },
+                                    },
+                                    {
+                                      $add: [
+                                        1,
+                                        {
+                                          $divide: [
+                                            { $ifNull: ["$feesPercentage", 0] },
+                                            100,
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                              in: {
+                                $cond: [
+                                  {
+                                    $and: [
+                                      "$serviceDiscount",
+                                      {
+                                        $gt: [
+                                          "$serviceDiscount.discountPercentage",
+                                          0,
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  {
+                                    $multiply: [
+                                      "$$withFees",
+                                      {
+                                        $subtract: [
+                                          1,
+                                          {
+                                            $divide: [
+                                              "$serviceDiscount.discountPercentage",
+                                              100,
+                                            ],
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  "$$withFees",
                                 ],
                               },
-                            ],
+                            },
                           },
                         },
                       ],
@@ -686,15 +837,58 @@ const getOnePackagePerCategory = async (req, res) => {
                         "$$item",
                         {
                           Amount: {
-                            $multiply: [
-                              { $toDouble: "$$item.Amount" },
-                              {
-                                $add: [
-                                  1,
-                                  { $divide: ["$feesPercentage", 100] },
+                            $let: {
+                              vars: {
+                                withFees: {
+                                  $multiply: [
+                                    { $toDouble: "$$item.Amount" },
+                                    {
+                                      $add: [
+                                        1,
+                                        {
+                                          $divide: [
+                                            { $ifNull: ["$feesPercentage", 0] },
+                                            100,
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                              in: {
+                                $cond: [
+                                  {
+                                    $and: [
+                                      "$serviceDiscount",
+                                      {
+                                        $gt: [
+                                          "$serviceDiscount.discountPercentage",
+                                          0,
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  {
+                                    $multiply: [
+                                      "$$withFees",
+                                      {
+                                        $subtract: [
+                                          1,
+                                          {
+                                            $divide: [
+                                              "$serviceDiscount.discountPercentage",
+                                              100,
+                                            ],
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  "$$withFees",
                                 ],
                               },
-                            ],
+                            },
                           },
                         },
                       ],
@@ -715,15 +909,58 @@ const getOnePackagePerCategory = async (req, res) => {
                         "$$item",
                         {
                           Amount: {
-                            $multiply: [
-                              { $toDouble: "$$item.Amount" },
-                              {
-                                $add: [
-                                  1,
-                                  { $divide: ["$feesPercentage", 100] },
+                            $let: {
+                              vars: {
+                                withFees: {
+                                  $multiply: [
+                                    { $toDouble: "$$item.Amount" },
+                                    {
+                                      $add: [
+                                        1,
+                                        {
+                                          $divide: [
+                                            { $ifNull: ["$feesPercentage", 0] },
+                                            100,
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                              in: {
+                                $cond: [
+                                  {
+                                    $and: [
+                                      "$serviceDiscount",
+                                      {
+                                        $gt: [
+                                          "$serviceDiscount.discountPercentage",
+                                          0,
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  {
+                                    $multiply: [
+                                      "$$withFees",
+                                      {
+                                        $subtract: [
+                                          1,
+                                          {
+                                            $divide: [
+                                              "$serviceDiscount.discountPercentage",
+                                              100,
+                                            ],
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  "$$withFees",
                                 ],
                               },
-                            ],
+                            },
                           },
                         },
                       ],
@@ -741,55 +978,62 @@ const getOnePackagePerCategory = async (req, res) => {
                         "$$item",
                         {
                           Rates: {
-                            $multiply: [
-                              { $toDouble: "$$item.Rates" },
-                              {
-                                $add: [
-                                  1,
-                                  { $divide: ["$feesPercentage", 100] },
+                            $let: {
+                              vars: {
+                                withFees: {
+                                  $multiply: [
+                                    { $toDouble: "$$item.Rates" },
+                                    {
+                                      $add: [
+                                        1,
+                                        {
+                                          $divide: [
+                                            { $ifNull: ["$feesPercentage", 0] },
+                                            100,
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                              in: {
+                                $cond: [
+                                  {
+                                    $and: [
+                                      "$serviceDiscount",
+                                      {
+                                        $gt: [
+                                          "$serviceDiscount.discountPercentage",
+                                          0,
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  {
+                                    $multiply: [
+                                      "$$withFees",
+                                      {
+                                        $subtract: [
+                                          1,
+                                          {
+                                            $divide: [
+                                              "$serviceDiscount.discountPercentage",
+                                              100,
+                                            ],
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  "$$withFees",
                                 ],
                               },
-                            ],
+                            },
                           },
                         },
                       ],
                     },
-                  },
-                },
-                Price: {
-                  $cond: {
-                    if: { $gt: ["$serviceDetails.values.Price", null] },
-                    then: {
-                      $multiply: [
-                        { $toDouble: "$serviceDetails.values.Price" },
-                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
-                      ],
-                    },
-                    else: "$serviceDetails.values.Price",
-                  },
-                },
-                price: {
-                  $cond: {
-                    if: { $gt: ["$serviceDetails.values.price", null] },
-                    then: {
-                      $multiply: [
-                        { $toDouble: "$serviceDetails.values.price" },
-                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
-                      ],
-                    },
-                    else: "$serviceDetails.values.price",
-                  },
-                },
-                Pricing: {
-                  $cond: {
-                    if: { $gt: ["$serviceDetails.values.Pricing", null] },
-                    then: {
-                      $multiply: [
-                        { $toDouble: "$serviceDetails.values.Pricing" },
-                        { $add: [1, { $divide: ["$feesPercentage", 100] }] },
-                      ],
-                    },
-                    else: "$serviceDetails.values.Pricing",
                   },
                 },
                 Package: {
@@ -801,15 +1045,58 @@ const getOnePackagePerCategory = async (req, res) => {
                         "$$item",
                         {
                           Rates: {
-                            $multiply: [
-                              { $toDouble: "$$item.Rates" },
-                              {
-                                $add: [
-                                  1,
-                                  { $divide: ["$feesPercentage", 100] },
+                            $let: {
+                              vars: {
+                                withFees: {
+                                  $multiply: [
+                                    { $toDouble: "$$item.Rates" },
+                                    {
+                                      $add: [
+                                        1,
+                                        {
+                                          $divide: [
+                                            { $ifNull: ["$feesPercentage", 0] },
+                                            100,
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                              in: {
+                                $cond: [
+                                  {
+                                    $and: [
+                                      "$serviceDiscount",
+                                      {
+                                        $gt: [
+                                          "$serviceDiscount.discountPercentage",
+                                          0,
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  {
+                                    $multiply: [
+                                      "$$withFees",
+                                      {
+                                        $subtract: [
+                                          1,
+                                          {
+                                            $divide: [
+                                              "$serviceDiscount.discountPercentage",
+                                              100,
+                                            ],
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  "$$withFees",
                                 ],
                               },
-                            ],
+                            },
                           },
                         },
                       ],
@@ -830,8 +1117,73 @@ const getOnePackagePerCategory = async (req, res) => {
                         "$$item",
                         {
                           Rates: {
+                            $let: {
+                              vars: {
+                                withFees: {
+                                  $multiply: [
+                                    { $toDouble: "$$item.Rates" },
+                                    {
+                                      $add: [
+                                        1,
+                                        {
+                                          $divide: [
+                                            { $ifNull: ["$feesPercentage", 0] },
+                                            100,
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                              in: {
+                                $cond: [
+                                  {
+                                    $and: [
+                                      "$serviceDiscount",
+                                      {
+                                        $gt: [
+                                          "$serviceDiscount.discountPercentage",
+                                          0,
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  {
+                                    $multiply: [
+                                      "$$withFees",
+                                      {
+                                        $subtract: [
+                                          1,
+                                          {
+                                            $divide: [
+                                              "$serviceDiscount.discountPercentage",
+                                              100,
+                                            ],
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  "$$withFees",
+                                ],
+                              },
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                Price: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.Price", null] },
+                    then: {
+                      $let: {
+                        vars: {
+                          withFees: {
                             $multiply: [
-                              { $toDouble: "$$item.Rates" },
+                              { $toDouble: "$serviceDetails.values.Price" },
                               {
                                 $add: [
                                   1,
@@ -841,8 +1193,151 @@ const getOnePackagePerCategory = async (req, res) => {
                             ],
                           },
                         },
-                      ],
+                        in: {
+                          $cond: [
+                            {
+                              $and: [
+                                "$serviceDiscount",
+                                {
+                                  $gt: [
+                                    "$serviceDiscount.discountPercentage",
+                                    0,
+                                  ],
+                                },
+                              ],
+                            },
+                            {
+                              $multiply: [
+                                "$$withFees",
+                                {
+                                  $subtract: [
+                                    1,
+                                    {
+                                      $divide: [
+                                        "$serviceDiscount.discountPercentage",
+                                        100,
+                                      ],
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                            "$$withFees",
+                          ],
+                        },
+                      },
                     },
+                    else: "$serviceDetails.values.Price",
+                  },
+                },
+                Pricing: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.Pricing", null] },
+                    then: {
+                      $let: {
+                        vars: {
+                          withFees: {
+                            $multiply: [
+                              { $toDouble: "$serviceDetails.values.Pricing" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                        in: {
+                          $cond: [
+                            {
+                              $and: [
+                                "$serviceDiscount",
+                                {
+                                  $gt: [
+                                    "$serviceDiscount.discountPercentage",
+                                    0,
+                                  ],
+                                },
+                              ],
+                            },
+                            {
+                              $multiply: [
+                                "$$withFees",
+                                {
+                                  $subtract: [
+                                    1,
+                                    {
+                                      $divide: [
+                                        "$serviceDiscount.discountPercentage",
+                                        100,
+                                      ],
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                            "$$withFees",
+                          ],
+                        },
+                      },
+                    },
+                    else: "$serviceDetails.values.Pricing",
+                  },
+                },
+                price: {
+                  $cond: {
+                    if: { $gt: ["$serviceDetails.values.price", null] },
+                    then: {
+                      $let: {
+                        vars: {
+                          withFees: {
+                            $multiply: [
+                              { $toDouble: "$serviceDetails.values.price" },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                        in: {
+                          $cond: [
+                            {
+                              $and: [
+                                { $ifNull: ["$serviceDiscount", false] },
+                                {
+                                  $gt: [
+                                    "$serviceDiscount.discountPercentage",
+                                    0,
+                                  ],
+                                },
+                              ],
+                            },
+                            {
+                              $multiply: [
+                                "$$withFees",
+                                {
+                                  $subtract: [
+                                    1,
+                                    {
+                                      $divide: [
+                                        "$serviceDiscount.discountPercentage",
+                                        100,
+                                      ],
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                            "$$withFees",
+                          ],
+                        },
+                      },
+                    },
+                    else: "$serviceDetails.values.price",
                   },
                 },
               },
@@ -897,7 +1392,6 @@ const getOnePackagePerCategory = async (req, res) => {
           "serviceDetails.values.Portfolio.photos": 0,
           "serviceDetails.values.Portfolio.videos": 0,
           "serviceDetails.values.Terms&Conditions": 0,
-          "serviceDetails.values.Type": 0,
           "serviceDetails.values.Type": 0,
           categoryFee: 0,
           feesPercentage: 0,
