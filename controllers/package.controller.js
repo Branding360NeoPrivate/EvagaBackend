@@ -680,75 +680,6 @@ const getOnePackagePerCategory = async (req, res) => {
             $mergeObjects: [
               "$serviceDetails.values",
               {
-                // "Duration&Pricing": {
-                //   $map: {
-                //     input: {
-                //       $ifNull: ["$serviceDetails.values.Duration&Pricing", []],
-                //     },
-                //     as: "item",
-                //     in: {
-                //       $mergeObjects: [
-                //         "$$item",
-                //         {
-                //           Amount: {
-                //             $let: {
-                //               vars: {
-                //                 withFees: {
-                //                   $multiply: [
-                //                     { $toDouble: "$$item.Amount" },
-                //                     {
-                //                       $add: [
-                //                         1,
-                //                         {
-                //                           $divide: [
-                //                             { $ifNull: ["$feesPercentage", 0] },
-                //                             100,
-                //                           ],
-                //                         },
-                //                       ],
-                //                     },
-                //                   ],
-                //                 },
-                //               },
-                //               in: {
-                //                 $cond: [
-                //                   {
-                //                     $and: [
-                //                       "$serviceDiscount",
-                //                       {
-                //                         $gt: [
-                //                           "$serviceDiscount.discountPercentage",
-                //                           0,
-                //                         ],
-                //                       },
-                //                     ],
-                //                   },
-                //                   {
-                //                     $multiply: [
-                //                       "$$withFees",
-                //                       {
-                //                         $subtract: [
-                //                           1,
-                //                           {
-                //                             $divide: [
-                //                               "$serviceDiscount.discountPercentage",
-                //                               100,
-                //                             ],
-                //                           },
-                //                         ],
-                //                       },
-                //                     ],
-                //                   },
-                //                   "$$withFees",
-                //                 ],
-                //               },
-                //             },
-                //           },
-                //         },
-                //       ],
-                //     },
-                //   },
-                // },
                 "Duration&Pricing": {
                   $map: {
                     input: {
@@ -841,7 +772,15 @@ const getOnePackagePerCategory = async (req, res) => {
                               vars: {
                                 withFees: {
                                   $multiply: [
-                                    { $toDouble: "$$item.Amount" },
+                                    {
+                                      $toDouble: {
+                                        $replaceOne: {
+                                          input: "$$item.Amount",
+                                          find: ",",
+                                          replacement: "",
+                                        },
+                                      },
+                                    },
                                     {
                                       $add: [
                                         1,
@@ -913,7 +852,15 @@ const getOnePackagePerCategory = async (req, res) => {
                               vars: {
                                 withFees: {
                                   $multiply: [
-                                    { $toDouble: "$$item.Amount" },
+                                    {
+                                      $toDouble: {
+                                        $replaceOne: {
+                                          input: "$$item.Amount",
+                                          find: ",",
+                                          replacement: "",
+                                        },
+                                      },
+                                    },
                                     {
                                       $add: [
                                         1,
@@ -982,7 +929,15 @@ const getOnePackagePerCategory = async (req, res) => {
                               vars: {
                                 withFees: {
                                   $multiply: [
-                                    { $toDouble: "$$item.Rates" },
+                                    {
+                                      $toDouble: {
+                                        $replaceOne: {
+                                          input: "$$item.Rates",
+                                          find: ",",
+                                          replacement: "",
+                                        },
+                                      },
+                                    },
                                     {
                                       $add: [
                                         1,
@@ -1049,7 +1004,15 @@ const getOnePackagePerCategory = async (req, res) => {
                               vars: {
                                 withFees: {
                                   $multiply: [
-                                    { $toDouble: "$$item.Rates" },
+                                    {
+                                      $toDouble: {
+                                        $replaceOne: {
+                                          input: "$$item.Rates",
+                                          find: ",",
+                                          replacement: "",
+                                        },
+                                      },
+                                    },
                                     {
                                       $add: [
                                         1,
@@ -1121,7 +1084,15 @@ const getOnePackagePerCategory = async (req, res) => {
                               vars: {
                                 withFees: {
                                   $multiply: [
-                                    { $toDouble: "$$item.Rates" },
+                                    {
+                                      $toDouble: {
+                                        $replaceOne: {
+                                          input: "$$item.Rates",
+                                          find: ",",
+                                          replacement: "",
+                                        },
+                                      },
+                                    },
                                     {
                                       $add: [
                                         1,
@@ -1183,7 +1154,15 @@ const getOnePackagePerCategory = async (req, res) => {
                         vars: {
                           withFees: {
                             $multiply: [
-                              { $toDouble: "$serviceDetails.values.Price" },
+                              {
+                                $toDouble: {
+                                  $replaceOne: {
+                                    input: "$serviceDetails.values.Price",
+                                    find: ",",
+                                    replacement: "",
+                                  },
+                                },
+                              },
                               {
                                 $add: [
                                   1,
@@ -1238,7 +1217,15 @@ const getOnePackagePerCategory = async (req, res) => {
                         vars: {
                           withFees: {
                             $multiply: [
-                              { $toDouble: "$serviceDetails.values.Pricing" },
+                              {
+                                $toDouble: {
+                                  $replaceOne: {
+                                    input: "$serviceDetails.values.Pricing",
+                                    find: ",",
+                                    replacement: "",
+                                  },
+                                },
+                              },
                               {
                                 $add: [
                                   1,
@@ -1293,7 +1280,15 @@ const getOnePackagePerCategory = async (req, res) => {
                         vars: {
                           withFees: {
                             $multiply: [
-                              { $toDouble: "$serviceDetails.values.price" },
+                              {
+                                $toDouble: {
+                                  $replaceOne: {
+                                    input: "$serviceDetails.values.price",
+                                    find: ",",
+                                    replacement: "",
+                                  },
+                                },
+                              },
                               {
                                 $add: [
                                   1,
@@ -1418,10 +1413,10 @@ const getOnePackagePerCategory = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-
-    res
-      .status(500)
-      .json({ message: "Failed to fetch packages", error: error.message });
+    res.status(500).json({
+      message: "Failed to fetch packages",
+      error: error.message,
+    });
   }
 };
 
