@@ -1538,27 +1538,31 @@ const getOnepackage = async (req, res) => {
       categoryFee = categoryFeeData.feesPercentage;
     }
 
-    // Helper function to clean and parse number strings
-    const cleanAndParseNumber = (value) => {
-      if (typeof value === 'string') {
-        // Remove commas and any other non-numeric characters (except decimal point)
-        const cleaned = value.replace(/[^0-9.]/g, '');
-        return parseFloat(cleaned) || 0;
-      }
-      return Number(value) || 0;
-    };
+    // Check for active coupons for this package
+    const currentDate = new Date();
+    const coupon = await Coupon.findOne({
+      selectedpackage: packageid,
+      startDate: { $lte: currentDate },
+      endDate: { $gte: currentDate },
+    });
 
-    // Function to apply percentage increase
-    const applyIncrease = (value, key) => {
-      if (value === null || value === undefined) {
+    const discountPercentage = coupon?.discountPercentage || 0;
+
+    // Function to apply percentage increase and then discount if coupon exists
+    const applyPriceAdjustments = (value) => {
+      if (!value || isNaN(value)) {
         return value;
       }
-      const numericValue = cleanAndParseNumber(value);
-      const updatedValue = (
-        numericValue *
-        (1 + categoryFee / 100)
-      ).toFixed(2);
-      return updatedValue;
+      
+      // First apply category fee increase
+      let adjustedValue = parseFloat(value) * (1 + categoryFee / 100);
+      
+      // Then apply discount if coupon exists
+      if (discountPercentage > 0) {
+        adjustedValue = adjustedValue * (1 - discountPercentage / 100);
+      }
+      
+      return adjustedValue.toFixed(2);
     };
 
     // Function to update array-based values
@@ -1566,12 +1570,9 @@ const getOnepackage = async (req, res) => {
       if (packageDetails.values.has(key)) {
         const updatedArray = packageDetails.values
           .get(key)
-          ?.map((item, index) => ({
+          ?.map((item) => ({
             ...item,
-            [fieldName]: applyIncrease(
-              item[fieldName],
-              `${key}[${index}].${fieldName}`
-            ),
+            [fieldName]: applyPriceAdjustments(item[fieldName]),
           }));
         packageDetails.values.set(key, updatedArray);
       }
@@ -1601,7 +1602,7 @@ const getOnepackage = async (req, res) => {
       if (packageDetails.values.has(key)) {
         packageDetails.values.set(
           key,
-          applyIncrease(packageDetails.values.get(key), key)
+          applyPriceAdjustments(packageDetails.values.get(key))
         );
       }
     });
@@ -1617,12 +1618,23 @@ const getOnepackage = async (req, res) => {
       "name -_id"
     );
 
-    res.status(200).json({
-      message: "Package updated successfully",
+    // Prepare response with coupon information if available
+    const response = {
+      message: "Package details fetched successfully",
       data: verifiedService,
       getVendorDetails: getVendorDetails,
       category: category,
-    });
+    };
+
+    if (coupon) {
+      response.coupon = {
+        code: coupon.code,
+        discountPercentage: coupon.discountPercentage,
+        validUntil: coupon.endDate,
+      };
+    }
+
+    res.status(200).json(response);
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch package details",
