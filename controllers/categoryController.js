@@ -171,13 +171,12 @@ const updateCategory = async (req, res) => {
 
 const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
+    const categories = await Category.find().sort({ sortOrder: 1 });
     res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
-
 
 const deleteCategory = async (req, res) => {
   const { catId } = req.params;
@@ -187,10 +186,8 @@ const deleteCategory = async (req, res) => {
   }
 
   try {
-
     await SubCategory.deleteMany({ categoryId: catId });
 
-  
     const category = await Category.findById(catId);
 
     if (!category) {
@@ -201,11 +198,10 @@ const deleteCategory = async (req, res) => {
 
     await Category.findByIdAndDelete(catId);
 
-
     if (iconKey) {
       const deleteParams = {
-        Bucket: process.env.AWS_BUCKET_NAME, 
-        Key: iconKey, 
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: iconKey,
       };
 
       try {
@@ -224,8 +220,6 @@ const deleteCategory = async (req, res) => {
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
-
-
 
 const addSubCategory = async (req, res) => {
   const { categoryId } = req.body;
