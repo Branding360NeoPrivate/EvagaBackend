@@ -1374,6 +1374,129 @@ const getAllPackage = async (req, res) => {
     });
   }
 };
+// const getOnepackage = async (req, res) => {
+//   const { serviceId, packageid } = req.params;
+
+//   if (!serviceId || !packageid) {
+//     return res
+//       .status(404)
+//       .json({ error: "Service ID and Package ID are required" });
+//   }
+
+//   try {
+//     const verifiedService = await vendorServiceListingFormModal
+//       .findById(serviceId)
+//       .select("-updatedAt -createdAt -__v");
+
+//     if (!verifiedService) {
+//       return res.status(404).json({ error: "Vendor service not found" });
+//     }
+
+//     // Find the specific package
+//     const packageDetails = verifiedService.services.find(
+//       (pkg) => pkg._id.toString() === packageid
+//     );
+
+//     if (!packageDetails) {
+//       return res.status(404).json({ error: "Package not found" });
+//     }
+
+//     if (!packageDetails.values || !(packageDetails.values instanceof Map)) {
+//       packageDetails.values = new Map(); // Ensure it's a Map object
+//     }
+
+//     // Fetch category fee from categoryfees modal
+//     let categoryFee = 12; // Default 12% increase
+//     const categoryFeeData = await CategoryFee.findOne({
+//       categoryId: verifiedService.Category,
+//     }).select("feesPercentage");
+
+//     if (categoryFeeData?.feesPercentage) {
+//       categoryFee = categoryFeeData.feesPercentage;
+//     }
+
+//     // Function to apply percentage increase
+//     const applyIncrease = (value, key) => {
+//       if (!value || isNaN(value)) {
+//         return value;
+//       }
+//       const updatedValue = (
+//         parseFloat(value) *
+//         (1 + categoryFee / 100)
+//       ).toFixed(2);
+//       return updatedValue;
+//     };
+
+//     // Function to update array-based values
+//     const updateArray = (key, fieldName) => {
+//       if (packageDetails.values.has(key)) {
+//         const updatedArray = packageDetails.values
+//           .get(key)
+//           ?.map((item, index) => ({
+//             ...item,
+//             [fieldName]: applyIncrease(
+//               item[fieldName],
+//               `${key}[${index}].${fieldName}`
+//             ),
+//           }));
+//         packageDetails.values.set(key, updatedArray);
+//       }
+//     };
+
+//     // Define the fields that need updates and their respective numeric keys
+//     const fieldsToUpdate = {
+//       Package: "Rates",
+//       "OrderQuantity&Pricing": "Rates",
+//       "Duration&Pricing": "Amount",
+//       SessionLength: "Amount",
+//       "SessionLength&Pricing": "Amount",
+//       QtyPricing: "Rates",
+//       AddOns: "Rates",
+//     };
+
+//     // Dynamically update only the fields that exist in packageDetails.values
+//     Object.keys(fieldsToUpdate).forEach((key) => {
+//       if (packageDetails.values.has(key)) {
+//         updateArray(key, fieldsToUpdate[key]);
+//       }
+//     });
+
+//     // Update individual price keys
+//     const priceKeys = ["Price", "price", "Pricing"];
+//     priceKeys.forEach((key) => {
+//       if (packageDetails.values.has(key)) {
+//         packageDetails.values.set(
+//           key,
+//           applyIncrease(packageDetails.values.get(key), key)
+//         );
+//       }
+//     });
+
+//     // Assign updated package back to service
+//     verifiedService.services = [packageDetails];
+
+//     // Fetch vendor and category details
+//     const getVendorDetails = await Vender.findById(
+//       verifiedService?.vendorId
+//     ).select("userName bio -_id");
+//     const category = await Category.findById(verifiedService?.Category).select(
+//       "name -_id"
+//     );
+
+//     res.status(200).json({
+//       message: "Package updated successfully",
+//       data: verifiedService,
+//       getVendorDetails: getVendorDetails,
+//       category: category,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Failed to fetch package details",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const getOnepackage = async (req, res) => {
   const { serviceId, packageid } = req.params;
 
@@ -1415,13 +1538,24 @@ const getOnepackage = async (req, res) => {
       categoryFee = categoryFeeData.feesPercentage;
     }
 
+    // Helper function to clean and parse number strings
+    const cleanAndParseNumber = (value) => {
+      if (typeof value === 'string') {
+        // Remove commas and any other non-numeric characters (except decimal point)
+        const cleaned = value.replace(/[^0-9.]/g, '');
+        return parseFloat(cleaned) || 0;
+      }
+      return Number(value) || 0;
+    };
+
     // Function to apply percentage increase
     const applyIncrease = (value, key) => {
-      if (!value || isNaN(value)) {
+      if (value === null || value === undefined) {
         return value;
       }
+      const numericValue = cleanAndParseNumber(value);
       const updatedValue = (
-        parseFloat(value) *
+        numericValue *
         (1 + categoryFee / 100)
       ).toFixed(2);
       return updatedValue;
