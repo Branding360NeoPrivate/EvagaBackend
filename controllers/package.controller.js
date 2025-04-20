@@ -8,6 +8,7 @@ import { Category } from "../modals/categoryModel.js";
 import Vender from "../modals/vendor.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
 import CategoryFee from "../modals/categoryFee.modal.js";
+import Coupon from "../modals/coupons.modal.js";
 // const getAllPackage = async (req, res) => {
 //   const limit = parseInt(req.query.limit) || 10;
 //   const page = parseInt(req.query.page) || 1;
