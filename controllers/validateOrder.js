@@ -53,6 +53,9 @@ export const validateOrder = async (req, res) => {
     } else if (paymentDetails.status === "failed") {
       order.status = "CANCELLED";
       order.paymentStatus = "FAILED";
+      order.items.forEach((item) => {
+        item.orderStatus = "cancelled";
+      });
     } else {
       order.status = "PENDING";
       order.paymentStatus = "PENDING";

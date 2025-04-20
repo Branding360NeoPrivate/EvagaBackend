@@ -5,7 +5,14 @@ import Vender from "../modals/vendor.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
 import User from "../modals/user.modal.js";
 
-const filterOrdersByItemStatus = async (orderStatus, fromDate, toDate, searchQuery, page = 1, limit = 10) => {
+const filterOrdersByItemStatus = async (
+  orderStatus,
+  fromDate,
+  toDate,
+  searchQuery,
+  page = 1,
+  limit = 10
+) => {
   const query = {};
 
   if (fromDate && toDate) {
@@ -28,39 +35,19 @@ const filterOrdersByItemStatus = async (orderStatus, fromDate, toDate, searchQue
     const matchedUsers = await User.find(userMatchQuery).select("_id");
     const userIds = matchedUsers.map((user) => user._id);
 
-    query.$or = [
-      orderIdMatch,
-      { userId: { $in: userIds } },
-    ];
+    query.$or = [orderIdMatch, { userId: { $in: userIds } }];
   }
 
-  // Step 1: Get ALL orders (without pagination) to count items with matching status
-  const allOrders = await OrderModel.find(query).populate({
-    path: "userId",
-    select: "name email phoneNumber",
-  });
-
-  // Step 2: Filter items by orderStatus and count them
-  let totalFilteredItems = 0;
-  allOrders.forEach((order) => {
-    totalFilteredItems += order.items.filter((item) => item.orderStatus === orderStatus).length;
-  });
-
-  // Step 3: Calculate pagination metadata
-  const totalPages = Math.ceil(totalFilteredItems / limit);
-  const skip = (page - 1) * limit;
-
-  // Step 4: Fetch orders with pagination
-  const paginatedOrders = await OrderModel.find(query)
+  // Get ALL orders to filter and paginate properly
+  const allOrders = await OrderModel.find(query)
     .populate({
       path: "userId",
       select: "name email phoneNumber",
     })
-    .skip(skip)
-    .limit(limit);
+    .sort({ createdAt: -1 });
 
-  // Step 5: Apply orderStatus filter to paginated results
-  const filteredItems = paginatedOrders.flatMap((order) => {
+  // Filter items by status
+  const allFilteredItems = allOrders.flatMap((order) => {
     return order.items
       .filter((item) => item.orderStatus === orderStatus)
       .map((item) => ({
@@ -80,10 +67,16 @@ const filterOrdersByItemStatus = async (orderStatus, fromDate, toDate, searchQue
       }));
   });
 
+  // Apply pagination to the filtered items
+  const totalFilteredItems = allFilteredItems.length;
+  const totalPages = Math.ceil(totalFilteredItems / limit);
+  const skip = (page - 1) * limit;
+  const paginatedItems = allFilteredItems.slice(skip, skip + limit);
+
   return {
-    items: filteredItems,
+    items: paginatedItems,
     pagination: {
-      totalCount: totalFilteredItems, // Now reflects ONLY items with matching status
+      totalCount: totalFilteredItems,
       totalPages,
       currentPage: page,
       itemsPerPage: limit,

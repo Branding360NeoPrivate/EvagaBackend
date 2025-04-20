@@ -212,9 +212,15 @@ const updateOrder = async (req, res) => {
     if (status) updateFields.status = status;
     if (paymentStatus) updateFields.paymentStatus = paymentStatus;
 
+    // If status is being set to CANCELLED, update all items' orderStatus to cancelled
+    if (status === "CANCELLED") {
+      updateFields.$set = updateFields.$set || {};
+      updateFields.$set["items.$[].orderStatus"] = "cancelled";
+    }
+
     const updatedOrder = await OrderModel.findOneAndUpdate(
       { razorPayOrderId: orderId },
-      { $set: updateFields },
+      updateFields,
       { new: true }
     );
 
