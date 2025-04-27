@@ -917,6 +917,151 @@ const getAllPackage = async (req, res) => {
     });
   }
 };
+// const getOnepackage = async (req, res) => {
+//   const { serviceId, packageid } = req.params;
+
+//   if (!serviceId || !packageid) {
+//     return res
+//       .status(404)
+//       .json({ error: "Service ID and Package ID are required" });
+//   }
+
+//   try {
+//     const verifiedService = await vendorServiceListingFormModal
+//       .findById(serviceId)
+//       .select("-updatedAt -createdAt -__v");
+
+//     if (!verifiedService) {
+//       return res.status(404).json({ error: "Vendor service not found" });
+//     }
+
+//     // Find the specific package
+//     const packageDetails = verifiedService.services.find(
+//       (pkg) => pkg._id.toString() === packageid
+//     );
+
+//     if (!packageDetails) {
+//       return res.status(404).json({ error: "Package not found" });
+//     }
+
+//     if (!packageDetails.values || !(packageDetails.values instanceof Map)) {
+//       packageDetails.values = new Map(); // Ensure it's a Map object
+//     }
+
+//     // Fetch category fee from categoryfees modal
+//     let categoryFee = 12; // Default 12% increase
+//     const categoryFeeData = await CategoryFee.findOne({
+//       categoryId: verifiedService.Category,
+//     }).select("feesPercentage");
+
+//     if (categoryFeeData?.feesPercentage) {
+//       categoryFee = categoryFeeData.feesPercentage;
+//     }
+
+//     // Check for active coupons for this package
+//     const currentDate = new Date();
+//     const coupon = await Coupon.findOne({
+//       selectedpackage: packageid,
+//       startDate: { $lte: currentDate },
+//       endDate: { $gte: currentDate },
+//     });
+
+//     const discountPercentage = coupon?.discountPercentage || 0;
+
+//     // Function to apply percentage increase and then discount if coupon exists
+//     const applyPriceAdjustments = (value) => {
+//       if (!value || isNaN(value)) {
+//         return value;
+//       }
+      
+//       // First apply category fee increase
+//       let adjustedValue = parseFloat(value) * (1 + categoryFee / 100);
+      
+//       // Then apply discount if coupon exists
+//       if (discountPercentage > 0) {
+//         adjustedValue = adjustedValue * (1 - discountPercentage / 100);
+//       }
+      
+//       return adjustedValue.toFixed(2);
+//     };
+
+//     // Function to update array-based values
+//     const updateArray = (key, fieldName) => {
+//       if (packageDetails.values.has(key)) {
+//         const updatedArray = packageDetails.values
+//           .get(key)
+//           ?.map((item) => ({
+//             ...item,
+//             [fieldName]: applyPriceAdjustments(item[fieldName]),
+//           }));
+//         packageDetails.values.set(key, updatedArray);
+//       }
+//     };
+
+//     // Define the fields that need updates and their respective numeric keys
+//     const fieldsToUpdate = {
+//       Package: "Rates",
+//       "OrderQuantity&Pricing": "Rates",
+//       "Duration&Pricing": "Amount",
+//       SessionLength: "Amount",
+//       "SessionLength&Pricing": "Amount",
+//       QtyPricing: "Rates",
+//       AddOns: "Rates",
+//     };
+
+//     // Dynamically update only the fields that exist in packageDetails.values
+//     Object.keys(fieldsToUpdate).forEach((key) => {
+//       if (packageDetails.values.has(key)) {
+//         updateArray(key, fieldsToUpdate[key]);
+//       }
+//     });
+
+//     // Update individual price keys
+//     const priceKeys = ["Price", "price", "Pricing"];
+//     priceKeys.forEach((key) => {
+//       if (packageDetails.values.has(key)) {
+//         packageDetails.values.set(
+//           key,
+//           applyPriceAdjustments(packageDetails.values.get(key))
+//         );
+//       }
+//     });
+
+//     // Assign updated package back to service
+//     verifiedService.services = [packageDetails];
+
+//     // Fetch vendor and category details
+//     const getVendorDetails = await Vender.findById(
+//       verifiedService?.vendorId
+//     ).select("userName bio -_id");
+//     const category = await Category.findById(verifiedService?.Category).select(
+//       "name -_id"
+//     );
+
+//     // Prepare response with coupon information if available
+//     const response = {
+//       message: "Package details fetched successfully",
+//       data: verifiedService,
+//       getVendorDetails: getVendorDetails,
+//       category: category,
+//     };
+
+//     if (coupon) {
+//       response.coupon = {
+//         code: coupon.code,
+//         discountPercentage: coupon.discountPercentage,
+//         validUntil: coupon.endDate,
+//       };
+//     }
+
+//     res.status(200).json(response);
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Failed to fetch package details",
+//       error: error.message,
+//     });
+//   }
+// };
 const getOnepackage = async (req, res) => {
   const { serviceId, packageid } = req.params;
 
@@ -945,11 +1090,11 @@ const getOnepackage = async (req, res) => {
     }
 
     if (!packageDetails.values || !(packageDetails.values instanceof Map)) {
-      packageDetails.values = new Map(); // Ensure it's a Map object
+      packageDetails.values = new Map();
     }
 
-    // Fetch category fee from categoryfees modal
-    let categoryFee = 12; // Default 12% increase
+    // Fetch category fee
+    let categoryFee = 12;
     const categoryFeeData = await CategoryFee.findOne({
       categoryId: verifiedService.Category,
     }).select("feesPercentage");
@@ -958,7 +1103,7 @@ const getOnepackage = async (req, res) => {
       categoryFee = categoryFeeData.feesPercentage;
     }
 
-    // Check for active coupons for this package
+    // Check for active coupons
     const currentDate = new Date();
     const coupon = await Coupon.findOne({
       selectedpackage: packageid,
@@ -968,18 +1113,22 @@ const getOnepackage = async (req, res) => {
 
     const discountPercentage = coupon?.discountPercentage || 0;
 
-    // Function to apply percentage increase and then discount if coupon exists
+    // Enhanced price cleaning and adjustment function
     const applyPriceAdjustments = (value) => {
-      if (!value || isNaN(value)) {
-        return value;
-      }
+      if (value === null || value === undefined) return value;
       
-      // First apply category fee increase
-      let adjustedValue = parseFloat(value) * (1 + categoryFee / 100);
+      // Remove all non-numeric characters except digits and decimal points
+      const cleanedValue = String(value).replace(/[^\d.]/g, '');
+      const numericValue = parseFloat(cleanedValue);
+
+      if (isNaN(numericValue)) return 0; // Return 0 for invalid numbers
+
+      // Apply category fee
+      let adjustedValue = numericValue * (1 + categoryFee / 100);
       
-      // Then apply discount if coupon exists
+      // Apply discount if applicable
       if (discountPercentage > 0) {
-        adjustedValue = adjustedValue * (1 - discountPercentage / 100);
+        adjustedValue *= (1 - discountPercentage / 100);
       }
       
       return adjustedValue.toFixed(2);
@@ -998,7 +1147,7 @@ const getOnepackage = async (req, res) => {
       }
     };
 
-    // Define the fields that need updates and their respective numeric keys
+    // Fields to process
     const fieldsToUpdate = {
       Package: "Rates",
       "OrderQuantity&Pricing": "Rates",
@@ -1009,14 +1158,14 @@ const getOnepackage = async (req, res) => {
       AddOns: "Rates",
     };
 
-    // Dynamically update only the fields that exist in packageDetails.values
+    // Process array fields
     Object.keys(fieldsToUpdate).forEach((key) => {
       if (packageDetails.values.has(key)) {
         updateArray(key, fieldsToUpdate[key]);
       }
     });
 
-    // Update individual price keys
+    // Process individual price fields
     const priceKeys = ["Price", "price", "Pricing"];
     priceKeys.forEach((key) => {
       if (packageDetails.values.has(key)) {
@@ -1027,10 +1176,9 @@ const getOnepackage = async (req, res) => {
       }
     });
 
-    // Assign updated package back to service
     verifiedService.services = [packageDetails];
 
-    // Fetch vendor and category details
+    // Fetch related data
     const getVendorDetails = await Vender.findById(
       verifiedService?.vendorId
     ).select("userName bio -_id");
@@ -1038,7 +1186,7 @@ const getOnepackage = async (req, res) => {
       "name -_id"
     );
 
-    // Prepare response with coupon information if available
+    // Prepare response
     const response = {
       message: "Package details fetched successfully",
       data: verifiedService,
@@ -1062,7 +1210,6 @@ const getOnepackage = async (req, res) => {
     });
   }
 };
-
 // const getOnePackagePerCategory = async (req, res) => {
 //   const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 //   const eventTypes = req.query.eventTypes || [];
