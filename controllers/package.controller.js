@@ -114,16 +114,121 @@ const getAllPackage = async (req, res) => {
         : {};
 
     // Helper function to clean and convert string numbers
-    const cleanNumber = (fieldPath) => ({
-      $toDouble: {
-        $replaceAll: {
-          input: fieldPath,
-          find: { 
-            $regex: "[^0-9.]", // Regex to match anything that's not a digit or decimal point
-            $options: "i"
-          },
-          replacement: ""
+    const cleanNumber = (field) => ({
+      $cond: {
+        if: { $eq: [{ $type: field }, "string"] },
+        then: {
+          $toDouble: {
+            $reduce: {
+              input: { 
+                $map: {
+                  input: { $range: [0, { $strLenCP: field }] },
+                  as: "idx",
+                  in: { $substrCP: [field, "$$idx", 1] }
+                }
+              },
+              initialValue: "",
+              in: {
+                $concat: [
+                  "$$value",
+                  {
+                    $cond: {
+                      if: { 
+                        $or: [
+                          { $regexMatch: { input: "$$this", regex: /[0-9]/ } },
+                          { $and: [
+                            { $eq: ["$$this", "."] },
+                            { $not: { $regexMatch: { input: "$$value", regex: /\./ } } }
+                          ]}
+                        ]
+                      },
+                      then: "$$this",
+                      else: ""
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        else: { $toDouble: field }
+      }
+    });
+
+    // Helper function for array fields
+    const processArrayField = (fieldName, valueField) => ({
+      $map: {
+        input: { $ifNull: [`$serviceDetails.values.${fieldName}`, []] },
+        as: "item",
+        in: {
+          $mergeObjects: [
+            "$$item",
+            {
+              [valueField]: {
+                $let: {
+                  vars: {
+                    base: cleanNumber(`$$item.${valueField}`),
+                    feesMultiplier: { $add: [1, { $divide: [{ $ifNull: ["$feesPercentage", 0] }, 100] }] }
+                  },
+                  in: {
+                    $let: {
+                      vars: {
+                        withFees: { $multiply: ["$$base", "$$feesMultiplier"] }
+                      },
+                      in: {
+                        $cond: [
+                          { 
+                            $and: [
+                              { $ifNull: ["$serviceDiscount", false] },
+                              { $gt: ["$serviceDiscount.discountPercentage", 0] }
+                            ]
+                          },
+                          { $multiply: ["$$withFees", { $subtract: [1, { $divide: ["$serviceDiscount.discountPercentage", 100] }] }] },
+                          "$$withFees"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
         }
+      }
+    });
+
+    // Helper function for single value fields
+    const processSingleField = (fieldName) => ({
+      $cond: {
+        if: { $gt: [`$serviceDetails.values.${fieldName}`, null] },
+        then: {
+          $let: {
+            vars: {
+              base: cleanNumber(`$serviceDetails.values.${fieldName}`),
+              feesMultiplier: { $add: [1, { $divide: ["$feesPercentage", 100] }] }
+            },
+            in: {
+              $let: {
+                vars: {
+                  withFees: { $multiply: ["$$base", "$$feesMultiplier"] }
+                },
+                in: {
+                  $cond: [
+                    { 
+                      $and: [
+                        { $ifNull: ["$serviceDiscount", false] },
+                        { $gt: ["$serviceDiscount.discountPercentage", 0] }
+                      ]
+                    },
+                    { $multiply: ["$$withFees", { $subtract: [1, { $divide: ["$serviceDiscount.discountPercentage", 100] }] }] },
+                    "$$withFees"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        else: `$serviceDetails.values.${fieldName}`
       }
     });
 
@@ -224,600 +329,30 @@ const getAllPackage = async (req, res) => {
           SubcategoryName: "$SubCategoryData.name",
         },
       },
-      {
-        $addFields: {
-          "serviceDetails.values": {
-            $mergeObjects: [
-              "$serviceDetails.values",
-              {
-                "Duration&Pricing": {
-                  $map: {
-                    input: {
-                      $ifNull: ["$serviceDetails.values.Duration&Pricing", []],
-                    },
-                    as: "item",
-                    in: {
-                      $mergeObjects: [
-                        "$$item",
-                        {
-                          Amount: {
-                            $let: {
-                              vars: {
-                                withFees: {
-                                  $multiply: [
-                                    cleanNumber("$$item.Amount"),
-                                    {
-                                      $add: [
-                                        1,
-                                        {
-                                          $divide: [
-                                            { $ifNull: ["$feesPercentage", 0] },
-                                            100,
-                                          ],
-                                        },
-                                      ],
-                                    },
-                                  ],
-                                },
-                              },
-                              in: {
-                                $cond: [
-                                  {
-                                    $and: [
-                                      "$serviceDiscount",
-                                      {
-                                        $gt: [
-                                          "$serviceDiscount.discountPercentage",
-                                          0,
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  {
-                                    $multiply: [
-                                      "$$withFees",
-                                      {
-                                        $subtract: [
-                                          1,
-                                          {
-                                            $divide: [
-                                              "$serviceDiscount.discountPercentage",
-                                              100,
-                                            ],
-                                          },
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  "$$withFees",
-                                ],
-                              },
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  },
-                },
-                SessionLength: {
-                  $map: {
-                    input: {
-                      $ifNull: ["$serviceDetails.values.SessionLength", []],
-                    },
-                    as: "item",
-                    in: {
-                      $mergeObjects: [
-                        "$$item",
-                        {
-                          Amount: {
-                            $let: {
-                              vars: {
-                                withFees: {
-                                  $multiply: [
-                                    cleanNumber("$$item.Amount"),
-                                    {
-                                      $add: [
-                                        1,
-                                        {
-                                          $divide: [
-                                            { $ifNull: ["$feesPercentage", 0] },
-                                            100,
-                                          ],
-                                        },
-                                      ],
-                                    },
-                                  ],
-                                },
-                              },
-                              in: {
-                                $cond: [
-                                  {
-                                    $and: [
-                                      "$serviceDiscount",
-                                      {
-                                        $gt: [
-                                          "$serviceDiscount.discountPercentage",
-                                          0,
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  {
-                                    $multiply: [
-                                      "$$withFees",
-                                      {
-                                        $subtract: [
-                                          1,
-                                          {
-                                            $divide: [
-                                              "$serviceDiscount.discountPercentage",
-                                              100,
-                                            ],
-                                          },
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  "$$withFees",
-                                ],
-                              },
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  },
-                },
-                "SessionLength&Pricing": {
-                  $map: {
-                    input: {
-                      $ifNull: [
-                        "$serviceDetails.values.SessionLength&Pricing",
-                        [],
-                      ],
-                    },
-                    as: "item",
-                    in: {
-                      $mergeObjects: [
-                        "$$item",
-                        {
-                          Amount: {
-                            $let: {
-                              vars: {
-                                withFees: {
-                                  $multiply: [
-                                    cleanNumber("$$item.Amount"),
-                                    {
-                                      $add: [
-                                        1,
-                                        {
-                                          $divide: [
-                                            { $ifNull: ["$feesPercentage", 0] },
-                                            100,
-                                          ],
-                                        },
-                                      ],
-                                    },
-                                  ],
-                                },
-                              },
-                              in: {
-                                $cond: [
-                                  {
-                                    $and: [
-                                      "$serviceDiscount",
-                                      {
-                                        $gt: [
-                                          "$serviceDiscount.discountPercentage",
-                                          0,
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  {
-                                    $multiply: [
-                                      "$$withFees",
-                                      {
-                                        $subtract: [
-                                          1,
-                                          {
-                                            $divide: [
-                                              "$serviceDiscount.discountPercentage",
-                                              100,
-                                            ],
-                                          },
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  "$$withFees",
-                                ],
-                              },
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  },
-                },
-                QtyPricing: {
-                  $map: {
-                    input: {
-                      $ifNull: ["$serviceDetails.values.QtyPricing", []],
-                    },
-                    as: "item",
-                    in: {
-                      $mergeObjects: [
-                        "$$item",
-                        {
-                          Rates: {
-                            $let: {
-                              vars: {
-                                withFees: {
-                                  $multiply: [
-                                    cleanNumber("$$item.Rates"),
-                                    {
-                                      $add: [
-                                        1,
-                                        {
-                                          $divide: [
-                                            { $ifNull: ["$feesPercentage", 0] },
-                                            100,
-                                          ],
-                                        },
-                                      ],
-                                    },
-                                  ],
-                                },
-                              },
-                              in: {
-                                $cond: [
-                                  {
-                                    $and: [
-                                      "$serviceDiscount",
-                                      {
-                                        $gt: [
-                                          "$serviceDiscount.discountPercentage",
-                                          0,
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  {
-                                    $multiply: [
-                                      "$$withFees",
-                                      {
-                                        $subtract: [
-                                          1,
-                                          {
-                                            $divide: [
-                                              "$serviceDiscount.discountPercentage",
-                                              100,
-                                            ],
-                                          },
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  "$$withFees",
-                                ],
-                              },
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  },
-                },
-                Package: {
-                  $map: {
-                    input: { $ifNull: ["$serviceDetails.values.Package", []] },
-                    as: "item",
-                    in: {
-                      $mergeObjects: [
-                        "$$item",
-                        {
-                          Rates: {
-                            $let: {
-                              vars: {
-                                withFees: {
-                                  $multiply: [
-                                    cleanNumber("$$item.Rates"),
-                                    {
-                                      $add: [
-                                        1,
-                                        {
-                                          $divide: [
-                                            { $ifNull: ["$feesPercentage", 0] },
-                                            100,
-                                          ],
-                                        },
-                                      ],
-                                    },
-                                  ],
-                                },
-                              },
-                              in: {
-                                $cond: [
-                                  {
-                                    $and: [
-                                      "$serviceDiscount",
-                                      {
-                                        $gt: [
-                                          "$serviceDiscount.discountPercentage",
-                                          0,
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  {
-                                    $multiply: [
-                                      "$$withFees",
-                                      {
-                                        $subtract: [
-                                          1,
-                                          {
-                                            $divide: [
-                                              "$serviceDiscount.discountPercentage",
-                                              100,
-                                            ],
-                                          },
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  "$$withFees",
-                                ],
-                              },
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  },
-                },
-                "OrderQuantity&Pricing": {
-                  $map: {
-                    input: {
-                      $ifNull: [
-                        "$serviceDetails.values.OrderQuantity&Pricing",
-                        [],
-                      ],
-                    },
-                    as: "item",
-                    in: {
-                      $mergeObjects: [
-                        "$$item",
-                        {
-                          Rates: {
-                            $let: {
-                              vars: {
-                                withFees: {
-                                  $multiply: [
-                                    cleanNumber("$$item.Rates"),
-                                    {
-                                      $add: [
-                                        1,
-                                        {
-                                          $divide: [
-                                            { $ifNull: ["$feesPercentage", 0] },
-                                            100,
-                                          ],
-                                        },
-                                      ],
-                                    },
-                                  ],
-                                },
-                              },
-                              in: {
-                                $cond: [
-                                  {
-                                    $and: [
-                                      "$serviceDiscount",
-                                      {
-                                        $gt: [
-                                          "$serviceDiscount.discountPercentage",
-                                          0,
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  {
-                                    $multiply: [
-                                      "$$withFees",
-                                      {
-                                        $subtract: [
-                                          1,
-                                          {
-                                            $divide: [
-                                              "$serviceDiscount.discountPercentage",
-                                              100,
-                                            ],
-                                          },
-                                        ],
-                                      },
-                                    ],
-                                  },
-                                  "$$withFees",
-                                ],
-                              },
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  },
-                },
-                Price: {
-                  $cond: {
-                    if: { $gt: ["$serviceDetails.values.Price", null] },
-                    then: {
-                      $let: {
-                        vars: {
-                          withFees: {
-                            $multiply: [
-                              cleanNumber("$serviceDetails.values.Price"),
-                              {
-                                $add: [
-                                  1,
-                                  { $divide: ["$feesPercentage", 100] },
-                                ],
-                              },
-                            ],
-                          },
-                        },
-                        in: {
-                          $cond: [
-                            {
-                              $and: [
-                                "$serviceDiscount",
-                                {
-                                  $gt: [
-                                    "$serviceDiscount.discountPercentage",
-                                    0,
-                                  ],
-                                },
-                              ],
-                            },
-                            {
-                              $multiply: [
-                                "$$withFees",
-                                {
-                                  $subtract: [
-                                    1,
-                                    {
-                                      $divide: [
-                                        "$serviceDiscount.discountPercentage",
-                                        100,
-                                      ],
-                                    },
-                                  ],
-                                },
-                              ],
-                            },
-                            "$$withFees",
-                          ],
-                        },
-                      },
-                    },
-                    else: "$serviceDetails.values.Price",
-                  },
-                },
-                Pricing: {
-                  $cond: {
-                    if: { $gt: ["$serviceDetails.values.Pricing", null] },
-                    then: {
-                      $let: {
-                        vars: {
-                          withFees: {
-                            $multiply: [
-                              cleanNumber("$serviceDetails.values.Pricing"),
-                              {
-                                $add: [
-                                  1,
-                                  { $divide: ["$feesPercentage", 100] },
-                                ],
-                              },
-                            ],
-                          },
-                        },
-                        in: {
-                          $cond: [
-                            {
-                              $and: [
-                                "$serviceDiscount",
-                                {
-                                  $gt: [
-                                    "$serviceDiscount.discountPercentage",
-                                    0,
-                                  ],
-                                },
-                              ],
-                            },
-                            {
-                              $multiply: [
-                                "$$withFees",
-                                {
-                                  $subtract: [
-                                    1,
-                                    {
-                                      $divide: [
-                                        "$serviceDiscount.discountPercentage",
-                                        100,
-                                      ],
-                                    },
-                                  ],
-                                },
-                              ],
-                            },
-                            "$$withFees",
-                          ],
-                        },
-                      },
-                    },
-                    else: "$serviceDetails.values.Pricing",
-                  },
-                },
-                price: {
-                  $cond: {
-                    if: { $gt: ["$serviceDetails.values.price", null] },
-                    then: {
-                      $let: {
-                        vars: {
-                          withFees: {
-                            $multiply: [
-                              cleanNumber("$serviceDetails.values.price"),
-                              {
-                                $add: [
-                                  1,
-                                  { $divide: ["$feesPercentage", 100] },
-                                ],
-                              },
-                            ],
-                          },
-                        },
-                        in: {
-                          $cond: [
-                            {
-                              $and: [
-                                { $ifNull: ["$serviceDiscount", false] },
-                                {
-                                  $gt: [
-                                    "$serviceDiscount.discountPercentage",
-                                    0,
-                                  ],
-                                },
-                              ],
-                            },
-                            {
-                              $multiply: [
-                                "$$withFees",
-                                {
-                                  $subtract: [
-                                    1,
-                                    {
-                                      $divide: [
-                                        "$serviceDiscount.discountPercentage",
-                                        100,
-                                      ],
-                                    },
-                                  ],
-                                },
-                              ],
-                            },
-                            "$$withFees",
-                          ],
-                        },
-                      },
-                    },
-                    else: "$serviceDetails.values.price",
-                  },
-                },
-              },
-            ],
-          },
+      
+        {
+          $addFields: {
+            "serviceDetails.values": {
+              $mergeObjects: [
+                "$serviceDetails.values",
+                {
+                  // Array fields
+                  "Duration&Pricing": processArrayField("Duration&Pricing", "Amount"),
+                  "SessionLength": processArrayField("SessionLength", "Amount"),
+                  "SessionLength&Pricing": processArrayField("SessionLength&Pricing", "Amount"),
+                  "QtyPricing": processArrayField("QtyPricing", "Rates"),
+                  "Package": processArrayField("Package", "Rates"),
+                  "OrderQuantity&Pricing": processArrayField("OrderQuantity&Pricing", "Rates"),
+  
+                  // Single value fields
+                  "Price": processSingleField("Price"),
+                  "Pricing": processSingleField("Pricing"),
+                  "price": processSingleField("price")
+                }
+              ]
+            }
+          }
         },
-      },
       {
         $match: {
           "serviceDetails.status": true,
