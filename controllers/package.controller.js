@@ -117,18 +117,10 @@ const getAllPackage = async (req, res) => {
     const cleanNumber = (fieldPath) => ({
       $toDouble: {
         $replaceAll: {
-          input: {
-            $replaceAll: {
-              input: fieldPath,
-              find: ",",
-              replacement: ""
-            }
-          },
-          find: {
-            $regexFind: {
-              input: fieldPath,
-              regex: "[^0-9.]"  // This regex matches anything that's not a digit or decimal point
-            }
+          input: fieldPath,
+          find: { 
+            $regex: "[^0-9.]", // Regex to match anything that's not a digit or decimal point
+            $options: "i"
           },
           replacement: ""
         }
@@ -911,9 +903,9 @@ const getAllPackage = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ 
-      message: "Failed to fetch packages", 
-      error: error.message 
+    res.status(500).json({
+      message: "Failed to fetch packages",
+      error: error.message,
     });
   }
 };
@@ -973,27 +965,25 @@ const getAllPackage = async (req, res) => {
 //       if (!value || isNaN(value)) {
 //         return value;
 //       }
-      
+
 //       // First apply category fee increase
 //       let adjustedValue = parseFloat(value) * (1 + categoryFee / 100);
-      
+
 //       // Then apply discount if coupon exists
 //       if (discountPercentage > 0) {
 //         adjustedValue = adjustedValue * (1 - discountPercentage / 100);
 //       }
-      
+
 //       return adjustedValue.toFixed(2);
 //     };
 
 //     // Function to update array-based values
 //     const updateArray = (key, fieldName) => {
 //       if (packageDetails.values.has(key)) {
-//         const updatedArray = packageDetails.values
-//           .get(key)
-//           ?.map((item) => ({
-//             ...item,
-//             [fieldName]: applyPriceAdjustments(item[fieldName]),
-//           }));
+//         const updatedArray = packageDetails.values.get(key)?.map((item) => ({
+//           ...item,
+//           [fieldName]: applyPriceAdjustments(item[fieldName]),
+//         }));
 //         packageDetails.values.set(key, updatedArray);
 //       }
 //     };
@@ -1062,6 +1052,7 @@ const getAllPackage = async (req, res) => {
 //     });
 //   }
 // };
+
 const getOnepackage = async (req, res) => {
   const { serviceId, packageid } = req.params;
 
@@ -2050,20 +2041,20 @@ const getOnePackagePerCategory = async (req, res) => {
               $let: {
                 vars: {
                   char: { $substrBytes: [fieldPath, "$$this", 1] },
-                  isDigit: { 
+                  isDigit: {
                     $in: [
-                      { $substrBytes: [fieldPath, "$$this", 1] }, 
-                      ["0","1","2","3","4","5","6","7","8","9","."]
-                    ] 
-                  }
+                      { $substrBytes: [fieldPath, "$$this", 1] },
+                      ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."],
+                    ],
+                  },
                 },
-                in: { $cond: ["$$isDigit", "$$char", ""] }
-              }
-            }
-          ]
-        }
-      }
-    }
+                in: { $cond: ["$$isDigit", "$$char", ""] },
+              },
+            },
+          ],
+        },
+      },
+    },
   });
 
   try {
