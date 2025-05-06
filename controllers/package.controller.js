@@ -9,6 +9,441 @@ import Vender from "../modals/vendor.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
 import CategoryFee from "../modals/categoryFee.modal.js";
 import Coupon from "../modals/coupons.modal.js";
+// const getAllPackage = async (req, res) => {
+//   const limit = parseInt(req.query.limit) || 10;
+//   const page = parseInt(req.query.page) || 1;
+//   const skip = (page - 1) * limit;
+//   const searchTerm = req.query.search || "";
+//   const categoryId = req.query.category || "all";
+//   const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+//   const eventTypes = req.query.eventTypes || [];
+//   const locationTypes = req.query.locationTypes || [];
+//   const priceRange = req.query.priceRange || [];
+
+//   if (categoryId !== "all" && !isValidObjectId(categoryId)) {
+//     return res.status(400).json({ error: "Invalid Category ID" });
+//   }
+
+//   try {
+//     const keywords = searchTerm
+//       .split(/\s+/)
+//       .filter((keyword) => keyword.length > 0);
+
+//     const searchQuery =
+//       keywords.length > 0
+//         ? {
+//             $or: keywords.flatMap((keyword) => [
+//               { AbouttheService: { $regex: keyword, $options: "i" } },
+//               { categoryName: { $regex: keyword, $options: "i" } },
+//               { SubcategoryName: { $regex: keyword, $options: "i" } },
+//               { "addon.name": { $regex: keyword, $options: "i" } },
+//               {
+//                 "serviceDetails.values.Title": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.VenueName": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.FoodTruckName": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.Event Type": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.EventType": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.Inclusions": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.Languages": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.Terms&Conditions": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.Description": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.menu.someField": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.cateringPackageVenue.someField": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//               {
+//                 "serviceDetails.cateringValueInVenue.someField": {
+//                   $regex: keyword,
+//                   $options: "i",
+//                 },
+//               },
+//             ]),
+//           }
+//         : {};
+
+//     // Helper function to clean and convert string numbers
+//     const cleanNumber = (field) => ({
+//       $cond: {
+//         if: { $eq: [{ $type: field }, "string"] },
+//         then: {
+//           $toDouble: {
+//             $reduce: {
+//               input: { 
+//                 $map: {
+//                   input: { $range: [0, { $strLenCP: field }] },
+//                   as: "idx",
+//                   in: { $substrCP: [field, "$$idx", 1] }
+//                 }
+//               },
+//               initialValue: "",
+//               in: {
+//                 $concat: [
+//                   "$$value",
+//                   {
+//                     $cond: {
+//                       if: { 
+//                         $or: [
+//                           { $regexMatch: { input: "$$this", regex: /[0-9]/ } },
+//                           { $and: [
+//                             { $eq: ["$$this", "."] },
+//                             { $not: { $regexMatch: { input: "$$value", regex: /\./ } } }
+//                           ]}
+//                         ]
+//                       },
+//                       then: "$$this",
+//                       else: ""
+//                     }
+//                   }
+//                 ]
+//               }
+//             }
+//           }
+//         },
+//         else: { $toDouble: field }
+//       }
+//     });
+
+//     // Helper function for array fields
+//     const processArrayField = (fieldName, valueField) => ({
+//       $map: {
+//         input: { $ifNull: [`$serviceDetails.values.${fieldName}`, []] },
+//         as: "item",
+//         in: {
+//           $mergeObjects: [
+//             "$$item",
+//             {
+//               [valueField]: {
+//                 $let: {
+//                   vars: {
+//                     base: cleanNumber(`$$item.${valueField}`),
+//                     feesMultiplier: { $add: [1, { $divide: [{ $ifNull: ["$feesPercentage", 0] }, 100] }] }
+//                   },
+//                   in: {
+//                     $let: {
+//                       vars: {
+//                         withFees: { $multiply: ["$$base", "$$feesMultiplier"] }
+//                       },
+//                       in: {
+//                         $cond: [
+//                           { 
+//                             $and: [
+//                               { $ifNull: ["$serviceDiscount", false] },
+//                               { $gt: ["$serviceDiscount.discountPercentage", 0] }
+//                             ]
+//                           },
+//                           { $multiply: ["$$withFees", { $subtract: [1, { $divide: ["$serviceDiscount.discountPercentage", 100] }] }] },
+//                           "$$withFees"
+//                         ]
+//                       }
+//                     }
+//                   }
+//                 }
+//               }
+//             }
+//           ]
+//         }
+//       }
+//     });
+
+//     // Helper function for single value fields
+//     const processSingleField = (fieldName) => ({
+//       $cond: {
+//         if: { $gt: [`$serviceDetails.values.${fieldName}`, null] },
+//         then: {
+//           $let: {
+//             vars: {
+//               base: cleanNumber(`$serviceDetails.values.${fieldName}`),
+//               feesMultiplier: { $add: [1, { $divide: ["$feesPercentage", 100] }] }
+//             },
+//             in: {
+//               $let: {
+//                 vars: {
+//                   withFees: { $multiply: ["$$base", "$$feesMultiplier"] }
+//                 },
+//                 in: {
+//                   $cond: [
+//                     { 
+//                       $and: [
+//                         { $ifNull: ["$serviceDiscount", false] },
+//                         { $gt: ["$serviceDiscount.discountPercentage", 0] }
+//                       ]
+//                     },
+//                     { $multiply: ["$$withFees", { $subtract: [1, { $divide: ["$serviceDiscount.discountPercentage", 100] }] }] },
+//                     "$$withFees"
+//                   ]
+//                 }
+//               }
+//             }
+//           }
+//         },
+//         else: `$serviceDetails.values.${fieldName}`
+//       }
+//     });
+
+//     const AllPacakage = await vendorServiceListingFormModal.aggregate([
+//       {
+//         $match: {
+//           ...(categoryId !== "all"
+//             ? { Category: new ObjectId(categoryId) }
+//             : {}),
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$Category",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "categories",
+//           let: { categoryId: "$Category" },
+//           pipeline: [
+//             { $match: { $expr: { $eq: ["$_id", "$$categoryId"] } } },
+//             { $project: { name: 1 } },
+//           ],
+//           as: "categoryData",
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "categoryfees",
+//           localField: "Category",
+//           foreignField: "categoryId",
+//           as: "categoryFee",
+//         },
+//       },
+//       {
+//         $addFields: {
+//           feesPercentage: {
+//             $ifNull: [{ $arrayElemAt: ["$categoryFee.feesPercentage", 0] }, 12],
+//           },
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$SubCategory",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "subcategories",
+//           let: { subCategoryId: "$SubCategory" },
+//           pipeline: [
+//             { $match: { $expr: { $eq: ["$_id", "$$subCategoryId"] } } },
+//             { $project: { name: 1 } },
+//           ],
+//           as: "SubCategoryData",
+//         },
+//       },
+//       {
+//         $unwind: "$services",
+//       },
+//       {
+//         $lookup: {
+//           from: "coupons",
+//           let: {
+//             serviceId: "$services._id",
+//             currentDate: new Date(),
+//           },
+//           pipeline: [
+//             {
+//               $match: {
+//                 $expr: {
+//                   $and: [
+//                     { $eq: ["$selectedpackage", { $toString: "$$serviceId" }] },
+//                     { $lte: ["$startDate", "$$currentDate"] },
+//                     { $gte: ["$endDate", "$$currentDate"] },
+//                   ],
+//                 },
+//               },
+//             },
+//           ],
+//           as: "serviceDiscount",
+//         },
+//       },
+//       {
+//         $addFields: {
+//           serviceDiscount: {
+//             $ifNull: [{ $arrayElemAt: ["$serviceDiscount", 0] }, null],
+//           },
+//         },
+//       },
+//       {
+//         $addFields: {
+//           serviceDetails: "$services",
+//           categoryName: "$categoryData.name",
+//           SubcategoryName: "$SubCategoryData.name",
+//         },
+//       },
+      
+//         {
+//           $addFields: {
+//             "serviceDetails.values": {
+//               $mergeObjects: [
+//                 "$serviceDetails.values",
+//                 {
+//                   // Array fields
+//                   "Duration&Pricing": processArrayField("Duration&Pricing", "Amount"),
+//                   "SessionLength": processArrayField("SessionLength", "Amount"),
+//                   "SessionLength&Pricing": processArrayField("SessionLength&Pricing", "Amount"),
+//                   "QtyPricing": processArrayField("QtyPricing", "Rates"),
+//                   "Package": processArrayField("Package", "Rates"),
+//                   "OrderQuantity&Pricing": processArrayField("OrderQuantity&Pricing", "Rates"),
+  
+//                   // Single value fields
+//                   "Price": processSingleField("Price"),
+//                   "Pricing": processSingleField("Pricing"),
+//                   "price": processSingleField("price")
+//                 }
+//               ]
+//             }
+//           }
+//         },
+//       {
+//         $match: {
+//           "serviceDetails.status": true,
+//           ...searchQuery,
+//         },
+//       },
+//       {
+//         $match: {
+//           ...(eventTypes.length > 0 && {
+//             $or: [
+//               {
+//                 "serviceDetails.values.Event Type": {
+//                   $regex: new RegExp(eventTypes, "i"),
+//                 },
+//               },
+//               {
+//                 "serviceDetails.values.EventType": {
+//                   $regex: new RegExp(eventTypes, "i"),
+//                 },
+//               },
+//             ],
+//           }),
+
+//           ...(locationTypes.length > 0 && {
+//             "serviceDetails.values.LocationType": {
+//               $regex: new RegExp(locationTypes, "i"),
+//             },
+//           }),
+//         },
+//       },
+//       {
+//         $project: {
+//           services: 0,
+//           categoryData: 0,
+//           SubCategoryData: 0,
+//           "serviceDetails.menuTemplateId": 0,
+//           "serviceDetails.cateringTemplateId": 0,
+//           "serviceDetails.cateringValueInVenue": 0,
+//           "serviceDetails.cateringPackageVenue": 0,
+//           "serviceDetails.menu": 0,
+//           "serviceDetails.values.AddOns": 0,
+//           "serviceDetails.values.TravelCharges": 0,
+//           "serviceDetails.values.Portfolio.photos": 0,
+//           "serviceDetails.values.Portfolio.videos": 0,
+//           "serviceDetails.values.Terms&Conditions": 0,
+//           YearofExperience: 0,
+//           AbouttheService: 0,
+//           updatedAt: 0,
+//           createdAt: 0,
+//           feesPercentage: 0,
+//           categoryFee: 0,
+//         },
+//       },
+//       {
+//         $sort: {
+//           createdAt: -1,
+//         },
+//       },
+//       {
+//         $sort: {
+//           "serviceDetails.values.Title": sortOrder,
+//           "serviceDetails.values.FoodTruckName": sortOrder,
+//           "serviceDetails.values.VenueName": sortOrder,
+//         },
+//       },
+//       {
+//         $facet: {
+//           data: [{ $skip: skip }, { $limit: limit }],
+//           totalCount: [{ $count: "total" }],
+//         },
+//       },
+//     ]);
+
+//     const allPackages = AllPacakage[0].data;
+//     const totalPackages = AllPacakage[0].totalCount[0]?.total || 0;
+
+//     return res.status(200).json({
+//       message: "Packages Fetched Successfully",
+//       data: allPackages,
+//       total: totalPackages,
+//       currentPage: page,
+//       totalPages: Math.ceil(totalPackages / limit),
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({
+//       message: "Failed to fetch packages",
+//       error: error.message,
+//     });
+//   }
+// };
 const getAllPackage = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const page = parseInt(req.query.page) || 1;
@@ -120,12 +555,12 @@ const getAllPackage = async (req, res) => {
         then: {
           $toDouble: {
             $reduce: {
-              input: { 
+              input: {
                 $map: {
                   input: { $range: [0, { $strLenCP: field }] },
                   as: "idx",
-                  in: { $substrCP: [field, "$$idx", 1] }
-                }
+                  in: { $substrCP: [field, "$$idx", 1] },
+                },
               },
               initialValue: "",
               in: {
@@ -133,69 +568,126 @@ const getAllPackage = async (req, res) => {
                   "$$value",
                   {
                     $cond: {
-                      if: { 
+                      if: {
                         $or: [
                           { $regexMatch: { input: "$$this", regex: /[0-9]/ } },
-                          { $and: [
-                            { $eq: ["$$this", "."] },
-                            { $not: { $regexMatch: { input: "$$value", regex: /\./ } } }
-                          ]}
-                        ]
+                          {
+                            $and: [
+                              { $eq: ["$$this", "."] },
+                              {
+                                $not: {
+                                  $regexMatch: {
+                                    input: "$$value",
+                                    regex: /\./,
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        ],
                       },
                       then: "$$this",
-                      else: ""
-                    }
-                  }
-                ]
-              }
-            }
-          }
+                      else: "",
+                    },
+                  },
+                ],
+              },
+            },
+          },
         },
-        else: { $toDouble: field }
-      }
+        else: { $toDouble: field },
+      },
     });
 
-    // Helper function for array fields
-    const processArrayField = (fieldName, valueField) => ({
-      $map: {
-        input: { $ifNull: [`$serviceDetails.values.${fieldName}`, []] },
-        as: "item",
-        in: {
-          $mergeObjects: [
-            "$$item",
-            {
-              [valueField]: {
-                $let: {
-                  vars: {
-                    base: cleanNumber(`$$item.${valueField}`),
-                    feesMultiplier: { $add: [1, { $divide: [{ $ifNull: ["$feesPercentage", 0] }, 100] }] }
-                  },
-                  in: {
-                    $let: {
-                      vars: {
-                        withFees: { $multiply: ["$$base", "$$feesMultiplier"] }
-                      },
-                      in: {
-                        $cond: [
-                          { 
-                            $and: [
-                              { $ifNull: ["$serviceDiscount", false] },
-                              { $gt: ["$serviceDiscount.discountPercentage", 0] }
-                            ]
+    // Enhanced helper function for array fields with sorting
+    const processArrayField = (fieldName, valueField) => {
+      return {
+        $let: {
+          vars: {
+            adjustedArray: {
+              $map: {
+                input: { $ifNull: [`$serviceDetails.values.${fieldName}`, []] },
+                as: "item",
+                in: {
+                  $mergeObjects: [
+                    "$$item",
+                    {
+                      [valueField]: {
+                        $let: {
+                          vars: {
+                            base: cleanNumber(`$$item.${valueField}`),
+                            feesMultiplier: {
+                              $add: [
+                                1,
+                                {
+                                  $divide: [
+                                    { $ifNull: ["$feesPercentage", 0] },
+                                    100,
+                                  ],
+                                },
+                              ],
+                            },
+                            in: {
+                              $let: {
+                                vars: {
+                                  withFees: {
+                                    $multiply: ["$$base", "$$feesMultiplier"],
+                                  },
+                                },
+                                in: {
+                                  $cond: [
+                                    {
+                                      $and: [
+                                        {
+                                          $ifNull: ["$serviceDiscount", false],
+                                        },
+                                        {
+                                          $gt: [
+                                            "$serviceDiscount.discountPercentage",
+                                            0,
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      $multiply: [
+                                        "$$withFees",
+                                        {
+                                          $subtract: [
+                                            1,
+                                            {
+                                              $divide: [
+                                                "$serviceDiscount.discountPercentage",
+                                                100,
+                                              ],
+                                            },
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                    "$$withFees",
+                                  ],
+                                },
+                              },
+                            },
                           },
-                          { $multiply: ["$$withFees", { $subtract: [1, { $divide: ["$serviceDiscount.discountPercentage", 100] }] }] },
-                          "$$withFees"
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          ]
-        }
-      }
-    });
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          in: {
+            $sortArray: {
+              input: "$$adjustedArray",
+              sortBy: { [valueField]: 1 }, // Always sort in ascending order
+            },
+          },
+        },
+      };
+    };
 
     // Helper function for single value fields
     const processSingleField = (fieldName) => ({
@@ -205,31 +697,48 @@ const getAllPackage = async (req, res) => {
           $let: {
             vars: {
               base: cleanNumber(`$serviceDetails.values.${fieldName}`),
-              feesMultiplier: { $add: [1, { $divide: ["$feesPercentage", 100] }] }
+              feesMultiplier: {
+                $add: [1, { $divide: ["$feesPercentage", 100] }],
+              },
             },
             in: {
               $let: {
                 vars: {
-                  withFees: { $multiply: ["$$base", "$$feesMultiplier"] }
+                  withFees: { $multiply: ["$$base", "$$feesMultiplier"] },
                 },
                 in: {
                   $cond: [
-                    { 
+                    {
                       $and: [
                         { $ifNull: ["$serviceDiscount", false] },
-                        { $gt: ["$serviceDiscount.discountPercentage", 0] }
-                      ]
+                        { $gt: ["$serviceDiscount.discountPercentage", 0] },
+                      ],
                     },
-                    { $multiply: ["$$withFees", { $subtract: [1, { $divide: ["$serviceDiscount.discountPercentage", 100] }] }] },
-                    "$$withFees"
-                  ]
-                }
-              }
-            }
-          }
+                    {
+                      $multiply: [
+                        "$$withFees",
+                        {
+                          $subtract: [
+                            1,
+                            {
+                              $divide: [
+                                "$serviceDiscount.discountPercentage",
+                                100,
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    "$$withFees",
+                  ],
+                },
+              },
+            },
+          },
         },
-        else: `$serviceDetails.values.${fieldName}`
-      }
+        else: `$serviceDetails.values.${fieldName}`,
+      },
     });
 
     const AllPacakage = await vendorServiceListingFormModal.aggregate([
@@ -329,30 +838,38 @@ const getAllPackage = async (req, res) => {
           SubcategoryName: "$SubCategoryData.name",
         },
       },
-      
-        {
-          $addFields: {
-            "serviceDetails.values": {
-              $mergeObjects: [
-                "$serviceDetails.values",
-                {
-                  // Array fields
-                  "Duration&Pricing": processArrayField("Duration&Pricing", "Amount"),
-                  "SessionLength": processArrayField("SessionLength", "Amount"),
-                  "SessionLength&Pricing": processArrayField("SessionLength&Pricing", "Amount"),
-                  "QtyPricing": processArrayField("QtyPricing", "Rates"),
-                  "Package": processArrayField("Package", "Rates"),
-                  "OrderQuantity&Pricing": processArrayField("OrderQuantity&Pricing", "Rates"),
-  
-                  // Single value fields
-                  "Price": processSingleField("Price"),
-                  "Pricing": processSingleField("Pricing"),
-                  "price": processSingleField("price")
-                }
-              ]
-            }
-          }
+      {
+        $addFields: {
+          "serviceDetails.values": {
+            $mergeObjects: [
+              "$serviceDetails.values",
+              {
+                // Array fields with sorting
+                "Duration&Pricing": processArrayField(
+                  "Duration&Pricing",
+                  "Amount"
+                ),
+                SessionLength: processArrayField("SessionLength", "Amount"),
+                "SessionLength&Pricing": processArrayField(
+                  "SessionLength&Pricing",
+                  "Amount"
+                ),
+                QtyPricing: processArrayField("QtyPricing", "Rates"),
+                Package: processArrayField("Package", "Rates"),
+                "OrderQuantity&Pricing": processArrayField(
+                  "OrderQuantity&Pricing",
+                  "Rates"
+                ),
+
+                // Single value fields
+                Price: processSingleField("Price"),
+                Pricing: processSingleField("Pricing"),
+                price: processSingleField("price"),
+              },
+            ],
+          },
         },
+      },
       {
         $match: {
           "serviceDetails.status": true,
@@ -375,7 +892,6 @@ const getAllPackage = async (req, res) => {
               },
             ],
           }),
-
           ...(locationTypes.length > 0 && {
             "serviceDetails.values.LocationType": {
               $regex: new RegExp(locationTypes, "i"),
