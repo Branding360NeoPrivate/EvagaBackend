@@ -587,7 +587,6 @@ const getAllPackage = async (req, res) => {
 //     });
 //   }
 // };
-
 const getOnepackage = async (req, res) => {
   const { serviceId, packageid } = req.params;
 
@@ -660,15 +659,18 @@ const getOnepackage = async (req, res) => {
       return adjustedValue.toFixed(2);
     };
 
-    // Function to update array-based values
-    const updateArray = (key, fieldName) => {
+    // Function to update and sort array-based values
+    const updateAndSortArray = (key, fieldName) => {
       if (packageDetails.values.has(key)) {
         const updatedArray = packageDetails.values
           .get(key)
           ?.map((item) => ({
             ...item,
             [fieldName]: applyPriceAdjustments(item[fieldName]),
-          }));
+          }))
+          // Sort the array by the price field in ascending order
+          .sort((a, b) => parseFloat(a[fieldName]) - parseFloat(b[fieldName]));
+        
         packageDetails.values.set(key, updatedArray);
       }
     };
@@ -684,10 +686,10 @@ const getOnepackage = async (req, res) => {
       AddOns: "Rates",
     };
 
-    // Process array fields
+    // Process array fields with sorting
     Object.keys(fieldsToUpdate).forEach((key) => {
       if (packageDetails.values.has(key)) {
-        updateArray(key, fieldsToUpdate[key]);
+        updateAndSortArray(key, fieldsToUpdate[key]);
       }
     });
 
@@ -736,6 +738,154 @@ const getOnepackage = async (req, res) => {
     });
   }
 };
+// const getOnepackage = async (req, res) => {
+//   const { serviceId, packageid } = req.params;
+
+//   if (!serviceId || !packageid) {
+//     return res
+//       .status(404)
+//       .json({ error: "Service ID and Package ID are required" });
+//   }
+
+//   try {
+//     const verifiedService = await vendorServiceListingFormModal
+//       .findById(serviceId)
+//       .select("-updatedAt -createdAt -__v");
+
+//     if (!verifiedService) {
+//       return res.status(404).json({ error: "Vendor service not found" });
+//     }
+
+//     // Find the specific package
+//     const packageDetails = verifiedService.services.find(
+//       (pkg) => pkg._id.toString() === packageid
+//     );
+
+//     if (!packageDetails) {
+//       return res.status(404).json({ error: "Package not found" });
+//     }
+
+//     if (!packageDetails.values || !(packageDetails.values instanceof Map)) {
+//       packageDetails.values = new Map();
+//     }
+
+//     // Fetch category fee
+//     let categoryFee = 12;
+//     const categoryFeeData = await CategoryFee.findOne({
+//       categoryId: verifiedService.Category,
+//     }).select("feesPercentage");
+
+//     if (categoryFeeData?.feesPercentage) {
+//       categoryFee = categoryFeeData.feesPercentage;
+//     }
+
+//     // Check for active coupons
+//     const currentDate = new Date();
+//     const coupon = await Coupon.findOne({
+//       selectedpackage: packageid,
+//       startDate: { $lte: currentDate },
+//       endDate: { $gte: currentDate },
+//     });
+
+//     const discountPercentage = coupon?.discountPercentage || 0;
+
+//     // Enhanced price cleaning and adjustment function
+//     const applyPriceAdjustments = (value) => {
+//       if (value === null || value === undefined) return value;
+      
+//       // Remove all non-numeric characters except digits and decimal points
+//       const cleanedValue = String(value).replace(/[^\d.]/g, '');
+//       const numericValue = parseFloat(cleanedValue);
+
+//       if (isNaN(numericValue)) return 0; // Return 0 for invalid numbers
+
+//       // Apply category fee
+//       let adjustedValue = numericValue * (1 + categoryFee / 100);
+      
+//       // Apply discount if applicable
+//       if (discountPercentage > 0) {
+//         adjustedValue *= (1 - discountPercentage / 100);
+//       }
+      
+//       return adjustedValue.toFixed(2);
+//     };
+
+//     // Function to update array-based values
+//     const updateArray = (key, fieldName) => {
+//       if (packageDetails.values.has(key)) {
+//         const updatedArray = packageDetails.values
+//           .get(key)
+//           ?.map((item) => ({
+//             ...item,
+//             [fieldName]: applyPriceAdjustments(item[fieldName]),
+//           }));
+//         packageDetails.values.set(key, updatedArray);
+//       }
+//     };
+
+//     // Fields to process
+//     const fieldsToUpdate = {
+//       Package: "Rates",
+//       "OrderQuantity&Pricing": "Rates",
+//       "Duration&Pricing": "Amount",
+//       SessionLength: "Amount",
+//       "SessionLength&Pricing": "Amount",
+//       QtyPricing: "Rates",
+//       AddOns: "Rates",
+//     };
+
+//     // Process array fields
+//     Object.keys(fieldsToUpdate).forEach((key) => {
+//       if (packageDetails.values.has(key)) {
+//         updateArray(key, fieldsToUpdate[key]);
+//       }
+//     });
+
+//     // Process individual price fields
+//     const priceKeys = ["Price", "price", "Pricing"];
+//     priceKeys.forEach((key) => {
+//       if (packageDetails.values.has(key)) {
+//         packageDetails.values.set(
+//           key,
+//           applyPriceAdjustments(packageDetails.values.get(key))
+//         );
+//       }
+//     });
+
+//     verifiedService.services = [packageDetails];
+
+//     // Fetch related data
+//     const getVendorDetails = await Vender.findById(
+//       verifiedService?.vendorId
+//     ).select("userName bio -_id");
+//     const category = await Category.findById(verifiedService?.Category).select(
+//       "name -_id"
+//     );
+
+//     // Prepare response
+//     const response = {
+//       message: "Package details fetched successfully",
+//       data: verifiedService,
+//       getVendorDetails: getVendorDetails,
+//       category: category,
+//     };
+
+//     if (coupon) {
+//       response.coupon = {
+//         code: coupon.code,
+//         discountPercentage: coupon.discountPercentage,
+//         validUntil: coupon.endDate,
+//       };
+//     }
+
+//     res.status(200).json(response);
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Failed to fetch package details",
+//       error: error.message,
+//     });
+//   }
+// };
 // const getOnePackagePerCategory = async (req, res) => {
 //   const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 //   const eventTypes = req.query.eventTypes || [];
