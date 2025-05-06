@@ -120,12 +120,12 @@ const getAllPackage = async (req, res) => {
         then: {
           $toDouble: {
             $reduce: {
-              input: { 
+              input: {
                 $map: {
                   input: { $range: [0, { $strLenCP: field }] },
                   as: "idx",
-                  in: { $substrCP: [field, "$$idx", 1] }
-                }
+                  in: { $substrCP: [field, "$$idx", 1] },
+                },
               },
               initialValue: "",
               in: {
@@ -133,69 +133,124 @@ const getAllPackage = async (req, res) => {
                   "$$value",
                   {
                     $cond: {
-                      if: { 
+                      if: {
                         $or: [
                           { $regexMatch: { input: "$$this", regex: /[0-9]/ } },
-                          { $and: [
-                            { $eq: ["$$this", "."] },
-                            { $not: { $regexMatch: { input: "$$value", regex: /\./ } } }
-                          ]}
-                        ]
+                          {
+                            $and: [
+                              { $eq: ["$$this", "."] },
+                              {
+                                $not: {
+                                  $regexMatch: {
+                                    input: "$$value",
+                                    regex: /\./,
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        ],
                       },
                       then: "$$this",
-                      else: ""
-                    }
-                  }
-                ]
-              }
-            }
-          }
+                      else: "",
+                    },
+                  },
+                ],
+              },
+            },
+          },
         },
-        else: { $toDouble: field }
-      }
+        else: { $toDouble: field },
+      },
     });
 
     // Helper function for array fields
-    const processArrayField = (fieldName, valueField) => ({
-      $map: {
-        input: { $ifNull: [`$serviceDetails.values.${fieldName}`, []] },
-        as: "item",
-        in: {
-          $mergeObjects: [
-            "$$item",
-            {
-              [valueField]: {
-                $let: {
-                  vars: {
-                    base: cleanNumber(`$$item.${valueField}`),
-                    feesMultiplier: { $add: [1, { $divide: [{ $ifNull: ["$feesPercentage", 0] }, 100] }] }
-                  },
-                  in: {
-                    $let: {
-                      vars: {
-                        withFees: { $multiply: ["$$base", "$$feesMultiplier"] }
-                      },
-                      in: {
-                        $cond: [
-                          { 
-                            $and: [
-                              { $ifNull: ["$serviceDiscount", false] },
-                              { $gt: ["$serviceDiscount.discountPercentage", 0] }
-                            ]
+    const processArrayField = (fieldName, valueField) => {
+      return {
+        $let: {
+          vars: {
+            adjustedArray: {
+              $map: {
+                input: { $ifNull: [`$serviceDetails.values.${fieldName}`, []] },
+                as: "item",
+                in: {
+                  $mergeObjects: [
+                    "$$item",
+                    {
+                      [valueField]: {
+                        $let: {
+                          vars: {
+                            base: cleanNumber(`$$item.${valueField}`),
+                            feesMultiplier: {
+                              $add: [
+                                1,
+                                {
+                                  $divide: [
+                                    { $ifNull: ["$feesPercentage", 0] },
+                                    100,
+                                  ],
+                                },
+                              ],
+                            },
                           },
-                          { $multiply: ["$$withFees", { $subtract: [1, { $divide: ["$serviceDiscount.discountPercentage", 100] }] }] },
-                          "$$withFees"
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          ]
-        }
-      }
-    });
+                          in: {
+                            $let: {
+                              vars: {
+                                withFees: {
+                                  $multiply: ["$$base", "$$feesMultiplier"],
+                                },
+                              },
+                              in: {
+                                $cond: [
+                                  {
+                                    $and: [
+                                      { $ifNull: ["$serviceDiscount", false] },
+                                      {
+                                        $gt: [
+                                          "$serviceDiscount.discountPercentage",
+                                          0,
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  {
+                                    $multiply: [
+                                      "$$withFees",
+                                      {
+                                        $subtract: [
+                                          1,
+                                          {
+                                            $divide: [
+                                              "$serviceDiscount.discountPercentage",
+                                              100,
+                                            ],
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                  "$$withFees",
+                                ],
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          in: {
+            $sortArray: {
+              input: "$$adjustedArray",
+              sortBy: { [valueField]: 1 }, // Sort in ascending order
+            },
+          },
+        },
+      };
+    };
 
     // Helper function for single value fields
     const processSingleField = (fieldName) => ({
@@ -205,31 +260,48 @@ const getAllPackage = async (req, res) => {
           $let: {
             vars: {
               base: cleanNumber(`$serviceDetails.values.${fieldName}`),
-              feesMultiplier: { $add: [1, { $divide: ["$feesPercentage", 100] }] }
+              feesMultiplier: {
+                $add: [1, { $divide: ["$feesPercentage", 100] }],
+              },
             },
             in: {
               $let: {
                 vars: {
-                  withFees: { $multiply: ["$$base", "$$feesMultiplier"] }
+                  withFees: { $multiply: ["$$base", "$$feesMultiplier"] },
                 },
                 in: {
                   $cond: [
-                    { 
+                    {
                       $and: [
                         { $ifNull: ["$serviceDiscount", false] },
-                        { $gt: ["$serviceDiscount.discountPercentage", 0] }
-                      ]
+                        { $gt: ["$serviceDiscount.discountPercentage", 0] },
+                      ],
                     },
-                    { $multiply: ["$$withFees", { $subtract: [1, { $divide: ["$serviceDiscount.discountPercentage", 100] }] }] },
-                    "$$withFees"
-                  ]
-                }
-              }
-            }
-          }
+                    {
+                      $multiply: [
+                        "$$withFees",
+                        {
+                          $subtract: [
+                            1,
+                            {
+                              $divide: [
+                                "$serviceDiscount.discountPercentage",
+                                100,
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    "$$withFees",
+                  ],
+                },
+              },
+            },
+          },
         },
-        else: `$serviceDetails.values.${fieldName}`
-      }
+        else: `$serviceDetails.values.${fieldName}`,
+      },
     });
 
     const AllPacakage = await vendorServiceListingFormModal.aggregate([
@@ -329,30 +401,62 @@ const getAllPackage = async (req, res) => {
           SubcategoryName: "$SubCategoryData.name",
         },
       },
-      
-        {
-          $addFields: {
-            "serviceDetails.values": {
-              $mergeObjects: [
-                "$serviceDetails.values",
-                {
-                  // Array fields
-                  "Duration&Pricing": processArrayField("Duration&Pricing", "Amount"),
-                  "SessionLength": processArrayField("SessionLength", "Amount"),
-                  "SessionLength&Pricing": processArrayField("SessionLength&Pricing", "Amount"),
-                  "QtyPricing": processArrayField("QtyPricing", "Rates"),
-                  "Package": processArrayField("Package", "Rates"),
-                  "OrderQuantity&Pricing": processArrayField("OrderQuantity&Pricing", "Rates"),
-  
-                  // Single value fields
-                  "Price": processSingleField("Price"),
-                  "Pricing": processSingleField("Pricing"),
-                  "price": processSingleField("price")
-                }
-              ]
-            }
+
+      // {
+      //   $addFields: {
+      //     "serviceDetails.values": {
+      //       $mergeObjects: [
+      //         "$serviceDetails.values",
+      //         {
+      //           // Array fields
+      //           "Duration&Pricing": processArrayField(
+      //             "Duration&Pricing",
+      //             "Amount"
+      //           ),
+      //           SessionLength: processArrayField("SessionLength", "Amount"),
+      //           "SessionLength&Pricing": processArrayField(
+      //             "SessionLength&Pricing",
+      //             "Amount"
+      //           ),
+      //           QtyPricing: processArrayField("QtyPricing", "Rates"),
+      //           Package: processArrayField("Package", "Rates"),
+      //           "OrderQuantity&Pricing": processArrayField(
+      //             "OrderQuantity&Pricing",
+      //             "Rates"
+      //           ),
+
+      //           // Single value fields
+      //           Price: processSingleField("Price"),
+      //           Pricing: processSingleField("Pricing"),
+      //           price: processSingleField("price"),
+      //         },
+      //       ],
+      //     },
+      //   },
+      // },
+      {
+        $addFields: {
+          "serviceDetails.values": {
+            $mergeObjects: [
+              "$serviceDetails.values",
+              {
+                // Array fields with sorting
+                "Duration&Pricing": processArrayField("Duration&Pricing", "Amount"),
+                "SessionLength": processArrayField("SessionLength", "Amount"),
+                "SessionLength&Pricing": processArrayField("SessionLength&Pricing", "Amount"),
+                "QtyPricing": processArrayField("QtyPricing", "Rates"),
+                "Package": processArrayField("Package", "Rates"),
+                "OrderQuantity&Pricing": processArrayField("OrderQuantity&Pricing", "Rates"),
+                
+                // Single value fields (keep existing)
+                "Price": processSingleField("Price"),
+                "Pricing": processSingleField("Pricing"),
+                "price": processSingleField("price")
+              }
+            ]
           }
-        },
+        }
+      },
       {
         $match: {
           "serviceDetails.status": true,
@@ -642,21 +746,21 @@ const getOnepackage = async (req, res) => {
     // Enhanced price cleaning and adjustment function
     const applyPriceAdjustments = (value) => {
       if (value === null || value === undefined) return value;
-      
+
       // Remove all non-numeric characters except digits and decimal points
-      const cleanedValue = String(value).replace(/[^\d.]/g, '');
+      const cleanedValue = String(value).replace(/[^\d.]/g, "");
       const numericValue = parseFloat(cleanedValue);
 
       if (isNaN(numericValue)) return 0; // Return 0 for invalid numbers
 
       // Apply category fee
       let adjustedValue = numericValue * (1 + categoryFee / 100);
-      
+
       // Apply discount if applicable
       if (discountPercentage > 0) {
-        adjustedValue *= (1 - discountPercentage / 100);
+        adjustedValue *= 1 - discountPercentage / 100;
       }
-      
+
       return adjustedValue.toFixed(2);
     };
 
@@ -671,7 +775,7 @@ const getOnepackage = async (req, res) => {
           }))
           // Sort the array by the price field in ascending order
           .sort((a, b) => parseFloat(a[fieldName]) - parseFloat(b[fieldName]));
-        
+
         packageDetails.values.set(key, updatedArray);
       }
     };
@@ -793,7 +897,7 @@ const getOnepackage = async (req, res) => {
 //     // Enhanced price cleaning and adjustment function
 //     const applyPriceAdjustments = (value) => {
 //       if (value === null || value === undefined) return value;
-      
+
 //       // Remove all non-numeric characters except digits and decimal points
 //       const cleanedValue = String(value).replace(/[^\d.]/g, '');
 //       const numericValue = parseFloat(cleanedValue);
@@ -802,12 +906,12 @@ const getOnepackage = async (req, res) => {
 
 //       // Apply category fee
 //       let adjustedValue = numericValue * (1 + categoryFee / 100);
-      
+
 //       // Apply discount if applicable
 //       if (discountPercentage > 0) {
 //         adjustedValue *= (1 - discountPercentage / 100);
 //       }
-      
+
 //       return adjustedValue.toFixed(2);
 //     };
 
@@ -1743,7 +1847,12 @@ const getOnePackagePerCategory = async (req, res) => {
   });
 
   // Function to create sorted array with price adjustments
-  const createSortedArray = (inputArray, priceField, feesPercentage, serviceDiscount) => {
+  const createSortedArray = (
+    inputArray,
+    priceField,
+    feesPercentage,
+    serviceDiscount
+  ) => {
     return {
       $map: {
         input: {
@@ -1763,7 +1872,17 @@ const getOnePackagePerCategory = async (req, res) => {
                               withFees: {
                                 $multiply: [
                                   cleanNumber(`$$item.${priceField}`),
-                                  { $add: [1, { $divide: [{ $ifNull: [feesPercentage, 0] }, 100] }],}
+                                  {
+                                    $add: [
+                                      1,
+                                      {
+                                        $divide: [
+                                          { $ifNull: [feesPercentage, 0] },
+                                          100,
+                                        ],
+                                      },
+                                    ],
+                                  },
                                 ],
                               },
                             },
@@ -1772,7 +1891,12 @@ const getOnePackagePerCategory = async (req, res) => {
                                 {
                                   $and: [
                                     serviceDiscount,
-                                    { $gt: [`${serviceDiscount}.discountPercentage`, 0] },
+                                    {
+                                      $gt: [
+                                        `${serviceDiscount}.discountPercentage`,
+                                        0,
+                                      ],
+                                    },
                                   ],
                                 },
                                 {
@@ -1781,7 +1905,12 @@ const getOnePackagePerCategory = async (req, res) => {
                                     {
                                       $subtract: [
                                         1,
-                                        { $divide: [`${serviceDiscount}.discountPercentage`, 100] },
+                                        {
+                                          $divide: [
+                                            `${serviceDiscount}.discountPercentage`,
+                                            100,
+                                          ],
+                                        },
                                       ],
                                     },
                                   ],
@@ -1823,7 +1952,7 @@ const getOnePackagePerCategory = async (req, res) => {
         $lookup: {
           from: "categories",
           let: { categoryId: "$Category" },
-          pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$categoryId"] } }}],
+          pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$categoryId"] } } }],
           as: "categoryData",
         },
       },
@@ -1933,7 +2062,12 @@ const getOnePackagePerCategory = async (req, res) => {
                           withFees: {
                             $multiply: [
                               cleanNumber("$serviceDetails.values.Price"),
-                              { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
                             ],
                           },
                         },
@@ -1942,7 +2076,12 @@ const getOnePackagePerCategory = async (req, res) => {
                             {
                               $and: [
                                 "$serviceDiscount",
-                                { $gt: ["$serviceDiscount.discountPercentage", 0] },
+                                {
+                                  $gt: [
+                                    "$serviceDiscount.discountPercentage",
+                                    0,
+                                  ],
+                                },
                               ],
                             },
                             {
@@ -1951,7 +2090,12 @@ const getOnePackagePerCategory = async (req, res) => {
                                 {
                                   $subtract: [
                                     1,
-                                    { $divide: ["$serviceDiscount.discountPercentage", 100] },
+                                    {
+                                      $divide: [
+                                        "$serviceDiscount.discountPercentage",
+                                        100,
+                                      ],
+                                    },
                                   ],
                                 },
                               ],
@@ -1973,7 +2117,12 @@ const getOnePackagePerCategory = async (req, res) => {
                           withFees: {
                             $multiply: [
                               cleanNumber("$serviceDetails.values.Pricing"),
-                              { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
                             ],
                           },
                         },
@@ -1982,7 +2131,12 @@ const getOnePackagePerCategory = async (req, res) => {
                             {
                               $and: [
                                 "$serviceDiscount",
-                                { $gt: ["$serviceDiscount.discountPercentage", 0] },
+                                {
+                                  $gt: [
+                                    "$serviceDiscount.discountPercentage",
+                                    0,
+                                  ],
+                                },
                               ],
                             },
                             {
@@ -1991,7 +2145,12 @@ const getOnePackagePerCategory = async (req, res) => {
                                 {
                                   $subtract: [
                                     1,
-                                    { $divide: ["$serviceDiscount.discountPercentage", 100] },
+                                    {
+                                      $divide: [
+                                        "$serviceDiscount.discountPercentage",
+                                        100,
+                                      ],
+                                    },
                                   ],
                                 },
                               ],
@@ -2013,7 +2172,12 @@ const getOnePackagePerCategory = async (req, res) => {
                           withFees: {
                             $multiply: [
                               cleanNumber("$serviceDetails.values.price"),
-                              { $add: [1, { $divide: ["$feesPercentage", 100] }] },
+                              {
+                                $add: [
+                                  1,
+                                  { $divide: ["$feesPercentage", 100] },
+                                ],
+                              },
                             ],
                           },
                         },
@@ -2022,7 +2186,12 @@ const getOnePackagePerCategory = async (req, res) => {
                             {
                               $and: [
                                 { $ifNull: ["$serviceDiscount", false] },
-                                { $gt: ["$serviceDiscount.discountPercentage", 0] },
+                                {
+                                  $gt: [
+                                    "$serviceDiscount.discountPercentage",
+                                    0,
+                                  ],
+                                },
                               ],
                             },
                             {
@@ -2031,7 +2200,12 @@ const getOnePackagePerCategory = async (req, res) => {
                                 {
                                   $subtract: [
                                     1,
-                                    { $divide: ["$serviceDiscount.discountPercentage", 100] },
+                                    {
+                                      $divide: [
+                                        "$serviceDiscount.discountPercentage",
+                                        100,
+                                      ],
+                                    },
                                   ],
                                 },
                               ],
