@@ -16,7 +16,7 @@ export const createBooking = async (req, res) => {
     );
     await sendEmailWithTemplete(
       "adminCtaNotification",
-      "armanal3066@gmail.com",
+      "info@evagaentertainment.com",
       "New Booking Form Submission - Evaga",
       {
         name: booking?.name,
