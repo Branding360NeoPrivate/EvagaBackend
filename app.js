@@ -36,6 +36,7 @@ import blog from "./routes/blog.routes.js";
 import newsletter from "./routes/newsLetter.routes.js";
 import logerror from "./routes/errorLog.routes.js";
 import review from "./routes/review.routes.js";
+import bookingCTA from "./routes/bookingCTA.routes.js";
 import helmet from "helmet";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -160,6 +161,7 @@ app.use("/api/v1/blog", blog);
 app.use("/api/v1/review", review);
 app.use("/api/v1/newsletter", newsletter);
 app.use("/api/v1/logerror", logerror);
+app.use("/api/v1/bookingCTA", bookingCTA);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });
