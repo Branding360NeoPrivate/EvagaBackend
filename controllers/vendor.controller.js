@@ -100,7 +100,7 @@ const registerVendor = async (req, res) => {
       "Welcome to Evaga! Complete Your KYC to Get Started",
       {
         vendorName: newUser?.name,
-        kycLink: "https://www.evagaentertainment.com",
+        kycLink: "https://www.eevagga.com",
       }
     );
     await sendTemplateMessage(newUser?.phoneNumber, "vendor_sign_up", []);

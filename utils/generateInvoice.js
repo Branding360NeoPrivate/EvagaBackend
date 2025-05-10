@@ -70,7 +70,7 @@ export const generateInvoice = (order) => {
               serviceName: extractedDetails?.Title,
               eventDate: item?.date,
               eventTime: item?.time,
-              bookingDetailsUrl: "https://www.evagaentertainment.com",
+              bookingDetailsUrl: "https://www.eevagga.com",
             }
           );
           await sendEmailWithTemplete(

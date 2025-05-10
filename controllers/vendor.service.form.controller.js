@@ -1515,7 +1515,7 @@ const VerifyService = async (req, res) => {
       {
         vendorName: vendor?.name,
         emailTitle: "🎉 Your Services Are Live on Evaga!",
-        dashboardLink: "https://evagaentertainment.com",
+        dashboardLink: "https://www.eevagga.com",
       }
     );
     await sendTemplateMessage(
