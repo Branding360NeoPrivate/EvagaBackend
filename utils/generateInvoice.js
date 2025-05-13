@@ -89,7 +89,7 @@ export const generateInvoice = (order) => {
 
           await sendTemplateMessage(
             user?.phoneNumber,
-            "order_confirmation_for_user",
+            "order_confirmation_for_user_n",
             [
               { name: "1", value: user?.name },
               { name: "2", value: vendorName },
@@ -97,7 +97,7 @@ export const generateInvoice = (order) => {
               { name: "4", value: `${item?.date} ${item?.time}` },
             ]
           );
-          await sendTemplateMessage(vendor?.phoneNumber, "new_booking_alert", [
+          await sendTemplateMessage(vendor?.phoneNumber, "new_booking_alert_new", [
             { name: "1", value: extractedDetails?.Title },
             { name: "2", value: `${item?.date} ${item?.time}` },
             {

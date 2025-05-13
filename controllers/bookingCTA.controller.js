@@ -1,6 +1,6 @@
 import bookingCTA from "../modals/bookingCTA.js";
 import sendEmailWithTemplete from "../utils/mailer.js";
-
+import { sendTemplateMessage } from "./wati.controller.js";
 // Create new booking
 export const createBooking = async (req, res) => {
   try {
@@ -26,6 +26,7 @@ export const createBooking = async (req, res) => {
         preferredDate: booking?.preferredDate,
       }
     );
+    await sendTemplateMessage(booking?.phone, "form_filling_enquiry_res", []);
   } catch (error) {
     res.status(400).json({
       success: false,
@@ -54,6 +55,7 @@ export const getBookings = async (req, res) => {
 
     const bookings = await bookingCTA
       .find(query)
+      .sort("created:-1")
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .exec();

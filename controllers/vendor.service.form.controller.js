@@ -1511,16 +1511,16 @@ const VerifyService = async (req, res) => {
     await sendEmailWithTemplete(
       "vendorServiceauditnotification",
       vendor?.email,
-      "🎉 Your Services Are Live on Evaga!",
+      "🎉 Your Services Are Live on Eevgaa!",
       {
         vendorName: vendor?.name,
-        emailTitle: "🎉 Your Services Are Live on Evaga!",
+        emailTitle: "🎉 Your Services Are Live on Eevgaa!",
         dashboardLink: "https://www.eevagga.com",
       }
     );
     await sendTemplateMessage(
       vendor?.phoneNumber,
-      "service_live_notification",
+      "service_live_notification_n",
       []
     );
   } catch (error) {

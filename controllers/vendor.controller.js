@@ -97,13 +97,13 @@ const registerVendor = async (req, res) => {
     await sendEmailWithTemplete(
       "vendorSignUp",
       newUser?.email,
-      "Welcome to Evaga! Complete Your KYC to Get Started",
+      "Welcome to Eevgaa! Complete Your KYC to Get Started",
       {
         vendorName: newUser?.name,
         kycLink: "https://www.eevagga.com",
       }
     );
-    await sendTemplateMessage(newUser?.phoneNumber, "vendor_sign_up", []);
+    await sendTemplateMessage(newUser?.phoneNumber, "vendor_sign_up_n", []);
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }

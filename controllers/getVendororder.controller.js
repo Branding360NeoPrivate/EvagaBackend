@@ -476,7 +476,7 @@ const endUserOrder = async (req, res) => {
       "OTP for Ending Your Service",
       `Dear Customer,\n\nPlease provide the OTP ${otp} to end your service. This OTP is valid for 6 hours. If you did not request this, please contact our support team immediately.\n\nThank you for choosing our service.\n\nBest regards,\n`
     );
-    await sendTemplateMessage(user?.phoneNumber, "end_service_otp", [
+    await sendTemplateMessage(user?.phoneNumber, "service_closed_otp", [
       { name: "1", value: otp },
       { name: "2", value: otp },
     ]);
