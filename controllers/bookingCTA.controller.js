@@ -12,12 +12,12 @@ export const createBooking = async (req, res) => {
     await sendEmailWithTemplete(
       "thankyou",
       booking?.email,
-      "Thank You for Reaching Out to Evaga!"
+      "Thank You for Reaching Out to Eevagga!"
     );
     await sendEmailWithTemplete(
       "adminCtaNotification",
       "info@evagaentertainment.com",
-      "New Booking Form Submission - Evaga",
+      "New Booking Form Submission - Eevagga",
       {
         name: booking?.name,
         email: booking?.email,

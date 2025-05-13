@@ -148,7 +148,7 @@ export const validateOrder = async (req, res) => {
         startDate.setHours(hours, minutes);
 
         const eventDetails = {
-          summary: `New Order Received From Evaga Entertainment`,
+          summary: `New Order Received From Eevagga`,
           start: {
             dateTime: startDate.toISOString(),
             timeZone: "Asia/Kolkata",
