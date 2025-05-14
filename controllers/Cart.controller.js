@@ -338,12 +338,13 @@ const getCart = async (req, res) => {
     let discount = 0;
     let appliedCoupon = null;
 
+    // 1. Fetch the cart
     const cart = await Cart.findOne({ userId });
     if (!cart) {
       return res.status(200).json({ message: "Cart not found" });
     }
 
-    // Calculate totals
+    // 2. Calculate cart totals
     const totalOfCart = cart.items.reduce(
       (total, item) => total + item.totalPrice,
       0
@@ -354,7 +355,7 @@ const getCart = async (req, res) => {
       (platformFee * gstPercentagePlatform) / 100
     );
 
-    // Coupon processing
+    // 3. Process coupon if provided
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode });
       if (!coupon) {
@@ -373,7 +374,7 @@ const getCart = async (req, res) => {
           .json({ error: "Usage limit reached for this coupon." });
       }
 
-      // Calculate discount
+      // Calculate discount amount
       if (coupon.discountAmount) {
         discount = coupon.discountAmount;
       } else if (coupon.discountPercentage) {
@@ -400,112 +401,105 @@ const getCart = async (req, res) => {
       appliedCoupon = cart.appliedCoupon.code;
     }
 
-    // Process items with better error handling
-    const updatedItems = [];
-    for (const item of cart.items) {
-      try {
-        const service = await vendorServiceListingFormModal.findById(
-          item.serviceId
-        );
+    // 4. Process cart items with enhanced error handling
+    const updatedItems = await Promise.all(
+      cart.items.map(async (item) => {
+        try {
+          const service = await vendorServiceListingFormModal.findById(item.serviceId);
+          if (!service) {
+            console.warn(`Service not found for item: ${item.serviceId}`);
+            return getDefaultItemResponse(item);
+          }
 
-        let packageDetails = null;
-        let gstPercentage = 18;
-        let categoryName = null;
-        let vendorName = null;
+          // A. Get category name with robust ID handling
+          let categoryName = null;
+          if (service.Category) {
+            try {
+              const categoryId = service.Category._id || service.Category;
+              const category = await Category.findById(categoryId).select('name');
+              categoryName = category?.name || null;
+            } catch (categoryError) {
+              console.error(`Category lookup failed:`, categoryError);
+            }
+          }
 
-        if (service) {
-          // Find matching package - more robust matching
+          // B. Get vendor name with robust ID handling
+          let vendorName = null;
+          if (service.vendorId) {
+            try {
+              const vendorId = service.vendorId._id || service.vendorId;
+              const vendor = await Vender.findById(vendorId).select('userName');
+              vendorName = vendor?.userName || null;
+            } catch (vendorError) {
+              console.error(`Vendor lookup failed:`, vendorError);
+            }
+          }
+
+          // C. Get GST percentage
+          let gstPercentage = 18;
+          if (service.Category) {
+            try {
+              const categoryId = service.Category._id || service.Category;
+              const gstCategory = await GstCategory.findOne({ categoryId });
+              if (gstCategory?.gstRates?.length > 0) {
+                gstPercentage = gstCategory.gstRates.slice(-1)[0].gstPercentage || 18;
+              }
+            } catch (gstError) {
+              console.error(`GST lookup failed:`, gstError);
+            }
+          }
+
+          // D. Find matching package
+          let packageDetails = null;
           const matchingPackage = service.services.find(
             (pkg) => pkg._id?.toString() === item.packageId?.toString()
           );
 
           if (matchingPackage) {
-            const values = Object.fromEntries(matchingPackage.values);
-            const {
-              CoverImage,
-              Title,
-              ProductImage,
-              VenueName,
-              FoodTruckName,
-            } = values;
-
-            // Get GST category
             try {
-              const gstCategory = await GstCategory.findOne({
-                categoryId: service.Category,
-              });
-              if (gstCategory?.gstRates?.length > 0) {
-                const activeGst =
-                  gstCategory.gstRates[gstCategory.gstRates.length - 1];
-                gstPercentage = activeGst.gstPercentage || 18;
-              }
-            } catch (gstError) {
-              console.error("GST lookup error:", gstError);
+              const values = Object.fromEntries(matchingPackage.values);
+              packageDetails = {
+                CoverImage: values.CoverImage,
+                Title: values.Title,
+                ProductImage: values.ProductImage,
+                VenueName: values.VenueName,
+                FoodTruckName: values.FoodTruckName,
+              };
+            } catch (packageError) {
+              console.error(`Package processing failed:`, packageError);
             }
-
-            // Get category name
-            try {
-              const category = await Category.findById(service.Category);
-              categoryName = category?.name || null;
-            } catch (categoryError) {
-              console.error("Category lookup error:", categoryError);
-            }
-
-            // Get vendor name
-            try {
-              const vendor = await Vender.findById(service.vendorId);
-              vendorName = vendor?.userName || null;
-            } catch (vendorError) {
-              console.error("Vendor lookup error:", vendorError);
-            }
-
-            packageDetails = {
-              CoverImage,
-              Title,
-              ProductImage,
-              VenueName,
-              FoodTruckName,
-            };
           }
+
+          // E. Calculate item financials
+          const itemDiscount = parseFloat(
+            ((item.totalPrice / totalOfCart) * discount).toFixed(2)
+          );
+          const finalAmount = parseFloat(
+            (item.totalPrice - itemDiscount).toFixed(2)
+          );
+          const gstAmount = parseFloat(
+            ((finalAmount * gstPercentage) / 100).toFixed(2)
+          );
+
+          return {
+            ...item.toObject(),
+            packageDetails,
+            gstPercentage,
+            gstAmount,
+            categoryName,
+            vendorName,
+            itemDiscount,
+            finalPrice: finalAmount,
+          };
+
+        } catch (itemError) {
+          console.error(`Failed to process item ${item._id}:`, itemError);
+          return getDefaultItemResponse(item);
         }
+      })
+    );
 
-        const itemDiscount = parseFloat(
-          ((item.totalPrice / totalOfCart) * discount).toFixed(2)
-        );
-        const finalAmount = parseFloat(
-          (item.totalPrice - itemDiscount).toFixed(2)
-        );
-        const gstAmount = parseFloat(
-          ((finalAmount * gstPercentage) / 100).toFixed(2)
-        );
-
-        updatedItems.push({
-          ...item.toObject(),
-          packageDetails,
-          gstPercentage,
-          gstAmount,
-          categoryName,
-          vendorName,
-          itemDiscount,
-          finalPrice: finalAmount,
-        });
-      } catch (itemError) {
-        console.error(`Error processing item ${item._id}:`, itemError);
-        // Push the item with minimal data if processing fails
-        updatedItems.push({
-          ...item.toObject(),
-          packageDetails: null,
-          gstPercentage: 18,
-          gstAmount: 0,
-          categoryName: null,
-          vendorName: null,
-          itemDiscount: 0,
-          finalPrice: item.totalPrice,
-        });
-      }
-    }
-
-    // Update cart items
+    // 5. Update cart items
     cart.items = updatedItems.map((item) => ({
       ...item,
       itemDiscount: item.itemDiscount,
@@ -513,7 +507,7 @@ const getCart = async (req, res) => {
     }));
     await cart.save();
 
-    // Calculate final totals
+    // 6. Calculate final totals
     const totalAfterDiscount = Math.max(totalOfCart - discount, 0);
     const totalGst = updatedItems.reduce(
       (total, item) => total + item.gstAmount,
@@ -524,6 +518,7 @@ const getCart = async (req, res) => {
       totalOfCart + platformFee + platformGstAmount + totalGst;
     const finalTotalAfterDiscount = Math.max(totalBeforeDiscount - discount, 0);
 
+    // 7. Prepare final response
     const response = {
       ...cart.toObject(),
       items: updatedItems,
@@ -540,10 +535,27 @@ const getCart = async (req, res) => {
 
     res.status(200).json(response);
   } catch (error) {
-    console.error("Error in getCart:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Error in getCart controller:", error);
+    res.status(500).json({ 
+      error: "Internal server error",
+      details: error.message 
+    });
   }
 };
+
+// Helper function for default item response
+function getDefaultItemResponse(item) {
+  return {
+    ...item.toObject(),
+    packageDetails: null,
+    gstPercentage: 18,
+    gstAmount: 0,
+    categoryName: null,
+    vendorName: null,
+    itemDiscount: 0,
+    finalPrice: item.totalPrice,
+  };
+}
 const updateCartItem = async (req, res) => {
   try {
     const { userId } = req.params;
