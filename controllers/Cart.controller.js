@@ -137,21 +137,213 @@ const addToCart = async (req, res) => {
   }
 };
 
+// const getCart = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+//     const { couponCode } = req.query;
+//     let discount = 0;
+//     let appliedCoupon = null;
+//     let categoryName = null;
+//     let vendorName = null;
+
+//     const cart = await Cart.findOne({ userId });
+
+//     if (!cart) {
+//       return res.status(200).json({ message: "Cart not found" });
+//     }
+
+//     const totalOfCart = cart.items.reduce(
+//       (total, item) => total + item.totalPrice,
+//       0
+//     );
+//     const platformFee = Math.min((totalOfCart * 2) / 100, 1000);
+//     const gstPercentagePlatform = 18;
+//     const platformGstAmount = Math.round(
+//       (platformFee * gstPercentagePlatform) / 100
+//     );
+
+//     if (couponCode) {
+//       const coupon = await Coupon.findOne({ code: couponCode });
+
+//       if (!coupon) {
+//         return res.status(404).json({ error: "Invalid coupon code." });
+//       }
+
+//       const now = new Date();
+//       if (now < coupon.startDate || now > coupon.endDate) {
+//         return res.status(400).json({ error: "Coupon Expired" });
+//       }
+
+//       const userUsage = coupon.usersUsed.get(userId);
+//       if (userUsage && userUsage.usageCount >= coupon.usageLimit) {
+//         return res
+//           .status(400)
+//           .json({ error: "Usage limit reached for this coupon." });
+//       }
+
+//       if (coupon.discountAmount) {
+//         discount = coupon.discountAmount;
+//       } else if (coupon.discountPercentage) {
+//         discount = (coupon.discountPercentage / 100) * totalOfCart;
+//         if (coupon.cap !== null) {
+//           discount = Math.min(discount, coupon.cap);
+//         }
+//       }
+
+//       discount = Math.min(discount, totalOfCart);
+//       appliedCoupon = couponCode;
+
+//       cart.appliedCoupon = { code: couponCode, discount };
+//       await cart.save();
+
+//       coupon.usersUsed.set(userId, {
+//         userId,
+//         usageCount: (userUsage?.usageCount || 0) + 1,
+//       });
+//       await coupon.save();
+//     } else if (cart.appliedCoupon?.code) {
+//       discount = cart.appliedCoupon.discount;
+//       appliedCoupon = cart.appliedCoupon.code;
+//     }
+
+//     const updatedItems = await Promise.all(
+//       cart.items.map(async (item) => {
+//         const service = await vendorServiceListingFormModal.findById(
+//           item.serviceId
+//         );
+
+//         let gstPercentage = 18;
+//         let gstAmount = 0;
+//         let itemDiscount = 0;
+//         let finalAmount = item.totalPrice;
+//         let packageDetails = null;
+//         let categoryName = null;
+//         let vendorName = null;
+
+//         if (service) {
+//           const matchingPackage = service.services.find(
+//             (pkg) => pkg._id.toString() === item.packageId
+//           );
+
+//           if (matchingPackage) {
+//             const values = Object.fromEntries(matchingPackage.values);
+//             const {
+//               CoverImage,
+//               Title,
+//               ProductImage,
+//               VenueName,
+//               FoodTruckName,
+//             } = values;
+
+//             const gstCategory = await GstCategory.findOne({
+//               categoryId: service.Category,
+//             });
+//             if (gstCategory && gstCategory.gstRates.length > 0) {
+//               const activeGst =
+//                 gstCategory.gstRates[gstCategory.gstRates.length - 1];
+//               gstPercentage = activeGst.gstPercentage || 18;
+//             }
+
+//             const category = await Category.findById(service.Category);
+//             if (category) {
+//               categoryName = category.name;
+//             }
+
+//             const vendor = await Vender.findById(service.vendorId);
+//             if (vendor) {
+//               vendorName = vendor.userName;
+//             }
+
+//             packageDetails = {
+//               CoverImage,
+//               Title,
+//               ProductImage,
+//               VenueName,
+//               FoodTruckName,
+//             };
+//           }
+//         }
+
+//         itemDiscount = parseFloat(
+//           ((item.totalPrice / totalOfCart) * discount).toFixed(2)
+//         );
+//         finalAmount = parseFloat((item.totalPrice - itemDiscount).toFixed(2));
+
+//         gstAmount = parseFloat(
+//           ((finalAmount * gstPercentage) / 100).toFixed(2)
+//         );
+
+//         item.itemDiscount = itemDiscount;
+//         item.finalPrice = finalAmount;
+
+//         return {
+//           ...item._doc,
+//           packageDetails,
+//           gstPercentage,
+//           gstAmount,
+//           categoryName,
+//           vendorName,
+//           itemDiscount,
+//           finalAmount,
+//         };
+//       })
+//     );
+
+//     cart.items = updatedItems.map((item) => ({
+//       ...item,
+//       itemDiscount: item.itemDiscount,
+//       finalPrice: item.finalPrice,
+//     }));
+//     await cart.save();
+
+//     const totalAfterDiscount = Math.max(totalOfCart - discount, 0);
+//     const totalGst = updatedItems.reduce((total, item) => {
+//       const itemPriceAfterDiscount =
+//         (item.totalPrice / totalOfCart) * totalAfterDiscount;
+//       const gstAmount = (itemPriceAfterDiscount * item.gstPercentage) / 100;
+//       item.gstAmount = gstAmount;
+//       return total + gstAmount;
+//     }, 0);
+
+//     const totalBeforeDiscount =
+//       totalOfCart + platformFee + platformGstAmount + totalGst;
+//     const finalTotalAfterDiscount = Math.max(totalBeforeDiscount - discount, 0);
+//     const updatedCart = {
+//       ...cart.toObject(),
+//       items: updatedItems,
+//       totalOfCart,
+//       platformFee,
+//       platformGstAmount,
+//       totalGst,
+//       discount,
+//       code: cart?.appliedCoupon?.code,
+//       appliedCoupon,
+//       totalBeforeDiscount,
+//       totalAfterDiscount: finalTotalAfterDiscount,
+//     };
+
+//     res.status(200).json(updatedCart);
+//   } catch (error) {
+//     console.error("Error:", error);
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+
+
 const getCart = async (req, res) => {
   try {
     const { userId } = req.params;
     const { couponCode } = req.query;
     let discount = 0;
     let appliedCoupon = null;
-    let categoryName = null;
-    let vendorName = null;
 
     const cart = await Cart.findOne({ userId });
-
     if (!cart) {
       return res.status(200).json({ message: "Cart not found" });
     }
 
+    // Calculate totals
     const totalOfCart = cart.items.reduce(
       (total, item) => total + item.totalPrice,
       0
@@ -162,9 +354,9 @@ const getCart = async (req, res) => {
       (platformFee * gstPercentagePlatform) / 100
     );
 
+    // Coupon processing
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode });
-
       if (!coupon) {
         return res.status(404).json({ error: "Invalid coupon code." });
       }
@@ -181,6 +373,7 @@ const getCart = async (req, res) => {
           .json({ error: "Usage limit reached for this coupon." });
       }
 
+      // Calculate discount
       if (coupon.discountAmount) {
         discount = coupon.discountAmount;
       } else if (coupon.discountPercentage) {
@@ -193,6 +386,7 @@ const getCart = async (req, res) => {
       discount = Math.min(discount, totalOfCart);
       appliedCoupon = couponCode;
 
+      // Update cart and coupon
       cart.appliedCoupon = { code: couponCode, discount };
       await cart.save();
 
@@ -206,23 +400,23 @@ const getCart = async (req, res) => {
       appliedCoupon = cart.appliedCoupon.code;
     }
 
-    const updatedItems = await Promise.all(
-      cart.items.map(async (item) => {
+    // Process items with better error handling
+    const updatedItems = [];
+    for (const item of cart.items) {
+      try {
         const service = await vendorServiceListingFormModal.findById(
           item.serviceId
         );
 
-        let gstPercentage = 18;
-        let gstAmount = 0;
-        let itemDiscount = 0;
-        let finalAmount = item.totalPrice;
         let packageDetails = null;
+        let gstPercentage = 18;
         let categoryName = null;
         let vendorName = null;
 
         if (service) {
+          // Find matching package - more robust matching
           const matchingPackage = service.services.find(
-            (pkg) => pkg._id.toString() === item.packageId
+            (pkg) => pkg._id?.toString() === item.packageId?.toString()
           );
 
           if (matchingPackage) {
@@ -235,23 +429,34 @@ const getCart = async (req, res) => {
               FoodTruckName,
             } = values;
 
-            const gstCategory = await GstCategory.findOne({
-              categoryId: service.Category,
-            });
-            if (gstCategory && gstCategory.gstRates.length > 0) {
-              const activeGst =
-                gstCategory.gstRates[gstCategory.gstRates.length - 1];
-              gstPercentage = activeGst.gstPercentage || 18;
+            // Get GST category
+            try {
+              const gstCategory = await GstCategory.findOne({
+                categoryId: service.Category,
+              });
+              if (gstCategory?.gstRates?.length > 0) {
+                const activeGst =
+                  gstCategory.gstRates[gstCategory.gstRates.length - 1];
+                gstPercentage = activeGst.gstPercentage || 18;
+              }
+            } catch (gstError) {
+              console.error("GST lookup error:", gstError);
             }
 
-            const category = await Category.findById(service.Category);
-            if (category) {
-              categoryName = category.name;
+            // Get category name
+            try {
+              const category = await Category.findById(service.Category);
+              categoryName = category?.name || null;
+            } catch (categoryError) {
+              console.error("Category lookup error:", categoryError);
             }
 
-            const vendor = await Vender.findById(service.vendorId);
-            if (vendor) {
-              vendorName = vendor.userName;
+            // Get vendor name
+            try {
+              const vendor = await Vender.findById(service.vendorId);
+              vendorName = vendor?.userName || null;
+            } catch (vendorError) {
+              console.error("Vendor lookup error:", vendorError);
             }
 
             packageDetails = {
@@ -264,31 +469,43 @@ const getCart = async (req, res) => {
           }
         }
 
-        itemDiscount = parseFloat(
+        const itemDiscount = parseFloat(
           ((item.totalPrice / totalOfCart) * discount).toFixed(2)
         );
-        finalAmount = parseFloat((item.totalPrice - itemDiscount).toFixed(2));
-
-        gstAmount = parseFloat(
+        const finalAmount = parseFloat(
+          (item.totalPrice - itemDiscount).toFixed(2)
+        );
+        const gstAmount = parseFloat(
           ((finalAmount * gstPercentage) / 100).toFixed(2)
         );
 
-        item.itemDiscount = itemDiscount;
-        item.finalPrice = finalAmount;
-
-        return {
-          ...item._doc,
+        updatedItems.push({
+          ...item.toObject(),
           packageDetails,
           gstPercentage,
           gstAmount,
           categoryName,
           vendorName,
           itemDiscount,
-          finalAmount,
-        };
-      })
-    );
+          finalPrice: finalAmount,
+        });
+      } catch (itemError) {
+        console.error(`Error processing item ${item._id}:`, itemError);
+        // Push the item with minimal data if processing fails
+        updatedItems.push({
+          ...item.toObject(),
+          packageDetails: null,
+          gstPercentage: 18,
+          gstAmount: 0,
+          categoryName: null,
+          vendorName: null,
+          itemDiscount: 0,
+          finalPrice: item.totalPrice,
+        });
+      }
+    }
 
+    // Update cart items
     cart.items = updatedItems.map((item) => ({
       ...item,
       itemDiscount: item.itemDiscount,
@@ -296,19 +513,18 @@ const getCart = async (req, res) => {
     }));
     await cart.save();
 
+    // Calculate final totals
     const totalAfterDiscount = Math.max(totalOfCart - discount, 0);
-    const totalGst = updatedItems.reduce((total, item) => {
-      const itemPriceAfterDiscount =
-        (item.totalPrice / totalOfCart) * totalAfterDiscount;
-      const gstAmount = (itemPriceAfterDiscount * item.gstPercentage) / 100;
-      item.gstAmount = gstAmount;
-      return total + gstAmount;
-    }, 0);
+    const totalGst = updatedItems.reduce(
+      (total, item) => total + item.gstAmount,
+      0
+    );
 
     const totalBeforeDiscount =
       totalOfCart + platformFee + platformGstAmount + totalGst;
     const finalTotalAfterDiscount = Math.max(totalBeforeDiscount - discount, 0);
-    const updatedCart = {
+
+    const response = {
       ...cart.toObject(),
       items: updatedItems,
       totalOfCart,
@@ -322,13 +538,12 @@ const getCart = async (req, res) => {
       totalAfterDiscount: finalTotalAfterDiscount,
     };
 
-    res.status(200).json(updatedCart);
+    res.status(200).json(response);
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error in getCart:", error);
     res.status(500).json({ error: error.message });
   }
 };
-
 const updateCartItem = async (req, res) => {
   try {
     const { userId } = req.params;
