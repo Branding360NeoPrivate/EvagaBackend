@@ -333,16 +333,20 @@ const addToCart = async (req, res) => {
 
 const getCart = async (req, res) => {
   try {
+    console.log(`[getCart] Started for user: ${req.params.userId}`);
     const { userId } = req.params;
     const { couponCode } = req.query;
     let discount = 0;
     let appliedCoupon = null;
 
     // 1. Fetch the cart
+    console.log(`[getCart] Fetching cart for user: ${userId}`);
     const cart = await Cart.findOne({ userId });
     if (!cart) {
+      console.log(`[getCart] Cart not found for user: ${userId}`);
       return res.status(200).json({ message: "Cart not found" });
     }
+    console.log(`[getCart] Found cart with ${cart.items.length} items`);
 
     // 2. Calculate cart totals
     const totalOfCart = cart.items.reduce(
@@ -354,21 +358,32 @@ const getCart = async (req, res) => {
     const platformGstAmount = Math.round(
       (platformFee * gstPercentagePlatform) / 100
     );
+    console.log(
+      `[getCart] Cart totals calculated - Total: ${totalOfCart}, Platform Fee: ${platformFee}`
+    );
 
     // 3. Process coupon if provided
     if (couponCode) {
+      console.log(`[getCart] Processing coupon code: ${couponCode}`);
       const coupon = await Coupon.findOne({ code: couponCode });
       if (!coupon) {
+        console.log(`[getCart] Coupon not found: ${couponCode}`);
         return res.status(404).json({ error: "Invalid coupon code." });
       }
 
       const now = new Date();
       if (now < coupon.startDate || now > coupon.endDate) {
+        console.log(
+          `[getCart] Coupon expired: ${couponCode} (Valid from ${coupon.startDate} to ${coupon.endDate})`
+        );
         return res.status(400).json({ error: "Coupon Expired" });
       }
 
       const userUsage = coupon.usersUsed.get(userId);
       if (userUsage && userUsage.usageCount >= coupon.usageLimit) {
+        console.log(
+          `[getCart] Coupon usage limit reached for user ${userId}: ${userUsage.usageCount}/${coupon.usageLimit}`
+        );
         return res
           .status(400)
           .json({ error: "Usage limit reached for this coupon." });
@@ -396,30 +411,57 @@ const getCart = async (req, res) => {
         usageCount: (userUsage?.usageCount || 0) + 1,
       });
       await coupon.save();
+      console.log(
+        `[getCart] Applied coupon ${couponCode} with discount: ${discount}`
+      );
     } else if (cart.appliedCoupon?.code) {
       discount = cart.appliedCoupon.discount;
       appliedCoupon = cart.appliedCoupon.code;
+      console.log(
+        `[getCart] Using existing coupon ${appliedCoupon} with discount: ${discount}`
+      );
     }
 
     // 4. Process cart items with enhanced error handling
+    console.log(`[getCart] Processing ${cart.items.length} cart items`);
     const updatedItems = await Promise.all(
-      cart.items.map(async (item) => {
+      cart.items.map(async (item, index) => {
+        const itemLogPrefix = `[Item ${index + 1}/${cart.items.length} - ${
+          item.serviceId
+        }]`;
         try {
-          const service = await vendorServiceListingFormModal.findById(item.serviceId);
+          console.log(`${itemLogPrefix} Fetching service details`);
+          const service = await vendorServiceListingFormModal.findById(
+            item.serviceId
+          );
           if (!service) {
-            console.warn(`Service not found for item: ${item.serviceId}`);
+            console.warn(`${itemLogPrefix} Service not found`);
             return getDefaultItemResponse(item);
           }
+          console.log(`${itemLogPrefix} Found service: ${service._id}`);
 
           // A. Get category name with robust ID handling
           let categoryName = null;
           if (service.Category) {
             try {
               const categoryId = service.Category._id || service.Category;
-              const category = await Category.findById(categoryId).select('name');
+              console.log(
+                `${itemLogPrefix} Looking up category: ${categoryId}`
+              );
+              const category = await Category.findById(categoryId).select(
+                "name"
+              );
               categoryName = category?.name || null;
+              console.log(
+                `${itemLogPrefix} Category result: ${
+                  categoryName || "Not found"
+                }`
+              );
             } catch (categoryError) {
-              console.error(`Category lookup failed:`, categoryError);
+              console.error(
+                `${itemLogPrefix} Category lookup failed:`,
+                categoryError
+              );
             }
           }
 
@@ -428,10 +470,17 @@ const getCart = async (req, res) => {
           if (service.vendorId) {
             try {
               const vendorId = service.vendorId._id || service.vendorId;
-              const vendor = await Vender.findById(vendorId).select('userName');
+              console.log(`${itemLogPrefix} Looking up vendor: ${vendorId}`);
+              const vendor = await Vender.findById(vendorId).select("userName");
               vendorName = vendor?.userName || null;
+              console.log(
+                `${itemLogPrefix} Vendor result: ${vendorName || "Not found"}`
+              );
             } catch (vendorError) {
-              console.error(`Vendor lookup failed:`, vendorError);
+              console.error(
+                `${itemLogPrefix} Vendor lookup failed:`,
+                vendorError
+              );
             }
           }
 
@@ -440,23 +489,32 @@ const getCart = async (req, res) => {
           if (service.Category) {
             try {
               const categoryId = service.Category._id || service.Category;
+              console.log(
+                `${itemLogPrefix} Looking up GST for category: ${categoryId}`
+              );
               const gstCategory = await GstCategory.findOne({ categoryId });
               if (gstCategory?.gstRates?.length > 0) {
-                gstPercentage = gstCategory.gstRates.slice(-1)[0].gstPercentage || 18;
+                gstPercentage =
+                  gstCategory.gstRates.slice(-1)[0].gstPercentage || 18;
               }
+              console.log(`${itemLogPrefix} GST percentage: ${gstPercentage}`);
             } catch (gstError) {
-              console.error(`GST lookup failed:`, gstError);
+              console.error(`${itemLogPrefix} GST lookup failed:`, gstError);
             }
           }
 
           // D. Find matching package
           let packageDetails = null;
+          console.log(
+            `${itemLogPrefix} Looking for package: ${item.packageId}`
+          );
           const matchingPackage = service.services.find(
             (pkg) => pkg._id?.toString() === item.packageId?.toString()
           );
 
           if (matchingPackage) {
             try {
+              console.log(`${itemLogPrefix} Found matching package`);
               const values = Object.fromEntries(matchingPackage.values);
               packageDetails = {
                 CoverImage: values.CoverImage,
@@ -465,9 +523,17 @@ const getCart = async (req, res) => {
                 VenueName: values.VenueName,
                 FoodTruckName: values.FoodTruckName,
               };
+              console.log(`${itemLogPrefix} Package details extracted`);
             } catch (packageError) {
-              console.error(`Package processing failed:`, packageError);
+              console.error(
+                `${itemLogPrefix} Package processing failed:`,
+                packageError
+              );
             }
+          } else {
+            console.warn(
+              `${itemLogPrefix} No matching package found in service`
+            );
           }
 
           // E. Calculate item financials
@@ -480,6 +546,9 @@ const getCart = async (req, res) => {
           const gstAmount = parseFloat(
             ((finalAmount * gstPercentage) / 100).toFixed(2)
           );
+          console.log(
+            `${itemLogPrefix} Calculated financials - Discount: ${itemDiscount}, Final: ${finalAmount}, GST: ${gstAmount}`
+          );
 
           return {
             ...item.toObject(),
@@ -491,15 +560,15 @@ const getCart = async (req, res) => {
             itemDiscount,
             finalPrice: finalAmount,
           };
-
         } catch (itemError) {
-          console.error(`Failed to process item ${item._id}:`, itemError);
+          console.error(`${itemLogPrefix} Failed to process item:`, itemError);
           return getDefaultItemResponse(item);
         }
       })
     );
 
     // 5. Update cart items
+    console.log(`[getCart] Updating cart with processed items`);
     cart.items = updatedItems.map((item) => ({
       ...item,
       itemDiscount: item.itemDiscount,
@@ -517,6 +586,9 @@ const getCart = async (req, res) => {
     const totalBeforeDiscount =
       totalOfCart + platformFee + platformGstAmount + totalGst;
     const finalTotalAfterDiscount = Math.max(totalBeforeDiscount - discount, 0);
+    console.log(
+      `[getCart] Final totals - Before discount: ${totalBeforeDiscount}, After discount: ${finalTotalAfterDiscount}`
+    );
 
     // 7. Prepare final response
     const response = {
@@ -533,18 +605,20 @@ const getCart = async (req, res) => {
       totalAfterDiscount: finalTotalAfterDiscount,
     };
 
+    console.log(`[getCart] Successfully processed cart for user: ${userId}`);
     res.status(200).json(response);
   } catch (error) {
-    console.error("Error in getCart controller:", error);
-    res.status(500).json({ 
+    console.error("[getCart] Controller error:", error);
+    res.status(500).json({
       error: "Internal server error",
-      details: error.message 
+      details: error.message,
     });
   }
 };
 
 // Helper function for default item response
 function getDefaultItemResponse(item) {
+  console.log(`[getCart] Returning default response for item: ${item._id}`);
   return {
     ...item.toObject(),
     packageDetails: null,
@@ -556,6 +630,7 @@ function getDefaultItemResponse(item) {
     finalPrice: item.totalPrice,
   };
 }
+
 const updateCartItem = async (req, res) => {
   try {
     const { userId } = req.params;
