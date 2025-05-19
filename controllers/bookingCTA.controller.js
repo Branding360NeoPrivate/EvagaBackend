@@ -41,7 +41,6 @@ export const getBookings = async (req, res) => {
     const { page = 1, limit = 10, search } = req.query;
 
     let query = {};
-    console.log(query, page, req.query);
 
     // Add search functionality for phone and email
     if (search) {
@@ -55,10 +54,10 @@ export const getBookings = async (req, res) => {
 
     const bookings = await bookingCTA
       .find(query)
-      .sort("created:-1")
+      .sort({ createdAt: -1 }) 
       .limit(limit * 1)
       .skip((page - 1) * limit)
-      .exec();
+    
 
     const count = await bookingCTA.countDocuments(query);
 
