@@ -29,6 +29,9 @@ const bookingCTASchema = new mongoose.Schema(
       required: [true, "Event type is required"],
       enum: ["Weddings", "Corporate", "Baby Showers", "Birthdays", "Others"],
     },
+    pageCatgeory: {
+      type: String,
+    },
     preferredDate: {
       type: Date,
       // required: [true, "Preferred date is required"],

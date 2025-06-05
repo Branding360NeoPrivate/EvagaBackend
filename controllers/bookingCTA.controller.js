@@ -24,6 +24,7 @@ export const createBooking = async (req, res) => {
         phone: booking?.phone,
         eventType: booking?.eventType,
         preferredDate: booking?.preferredDate,
+        pageCatgeory: booking?.pageCatgeory,
       }
     );
     await sendTemplateMessage(booking?.phone, "form_filling_enquiry_res", []);
@@ -54,10 +55,9 @@ export const getBookings = async (req, res) => {
 
     const bookings = await bookingCTA
       .find(query)
-      .sort({ createdAt: -1 }) 
+      .sort({ createdAt: -1 })
       .limit(limit * 1)
-      .skip((page - 1) * limit)
-    
+      .skip((page - 1) * limit);
 
     const count = await bookingCTA.countDocuments(query);
 
