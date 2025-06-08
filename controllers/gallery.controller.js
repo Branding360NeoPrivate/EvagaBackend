@@ -3,7 +3,7 @@ import Gallery from "../modals/gallery.model.js";
 const createGallery = async (req, res) => {
   const galleryPreview = req.file?.preview || null;
 
-  const galleryImage = req.file ? req.file.originalname : "";
+  const galleryImage = req.file ? req.file.location : "";
   if (!galleryImage) {
     return res.status(400).json({ error: "Gallery Image is required" });
   }
@@ -22,5 +22,6 @@ const createGallery = async (req, res) => {
     res.status(500).json({ message: "Error creating Gallery", error });
   }
 };
+
 
 export { createGallery };

@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.route("/add-gallery").post(
 //   verifyJwt(["admin"]),
-  uploadToS3WithEncoded("banner", [
+  uploadToS3WithEncoded("gallery", [
     "image/png",
     "image/jpg",
     "image/jpeg",
