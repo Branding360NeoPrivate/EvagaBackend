@@ -23,7 +23,7 @@ export const createBooking = async (req, res) => {
         email: booking?.email,
         phone: booking?.phone,
         eventType: booking?.eventType,
-        preferredDate: booking?.preferredDate,
+        preferredDate: booking?.eventMonth,
         pageCatgeory: booking?.pageCatgeory,
       }
     );
