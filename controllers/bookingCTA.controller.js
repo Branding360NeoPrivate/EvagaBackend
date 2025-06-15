@@ -1,4 +1,5 @@
 import bookingCTA from "../modals/bookingCTA.js";
+import { sendEmail } from "../utils/emailService.js";
 import sendEmailWithTemplete from "../utils/mailer.js";
 import { sendTemplateMessage } from "./wati.controller.js";
 // Create new booking
@@ -9,12 +10,12 @@ export const createBooking = async (req, res) => {
       success: true,
       data: booking,
     });
-    await sendEmailWithTemplete(
+    await sendEmail(
       "thankyou",
       booking?.email,
       "Thank You for Reaching Out to Eevagga!"
     );
-    await sendEmailWithTemplete(
+    await sendEmail(
       "adminCtaNotification",
       "info@evagaentertainment.com",
       "New Booking Form Submission - Eevagga",
@@ -55,9 +56,10 @@ export const getBookings = async (req, res) => {
 
     const bookings = await bookingCTA
       .find(query)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 }) 
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+    
 
     const count = await bookingCTA.countDocuments(query);
 

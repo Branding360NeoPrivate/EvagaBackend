@@ -10,12 +10,12 @@ import { uploadToYouTube } from "./upload.Youtube.controller.js";
 import { getPreSignedUrl } from "../utils/getPreSignedUrl.js";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import Vender from "../modals/vendor.modal.js";
-import sendEmailWithTemplete from "../utils/mailer.js";
 import { Readable } from "stream";
 import { Upload } from "@aws-sdk/lib-storage";
 import { S3Client } from "@aws-sdk/client-s3";
 import mongoose from "mongoose";
 import { sendTemplateMessage } from "./wati.controller.js";
+import { sendEmail } from "../utils/emailService.js";
 const CLIENT_SECRET_PATH = "./client_secret.json";
 const TOKEN_PATH = "../token.json";
 const SCOPES = ["https://www.googleapis.com/auth/youtube.upload"];
@@ -955,7 +955,7 @@ const processFilesAsync = async (files, services, submissionId, vendorId) => {
 
     // Send email to vendor
     const vendor = await Vender.findById(vendorId);
-    await sendEmailWithTemplete(
+    await sendEmail(
       "vendorSeviceAddNewService",
       vendor?.email,
       "Your Services Are Under Review – Next Steps",
@@ -1508,7 +1508,7 @@ const VerifyService = async (req, res) => {
       message: "Vendor service Verification successfully",
     });
     const vendor = await Vender.findById(verifiedService?.vendorId);
-    await sendEmailWithTemplete(
+    await sendEmail(
       "vendorServiceauditnotification",
       vendor?.email,
       "🎉 Your Services Are Live on Eevgaa!",
