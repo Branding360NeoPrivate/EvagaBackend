@@ -506,9 +506,7 @@ const addVenderService = async (req, res) => {
     if (
       !formTemplateId ||
       !Category ||
-      !SubCategory ||
-      !AbouttheService ||
-      !YearofExperience
+      !SubCategory 
     ) {
       return res.status(400).json({
         error: "All fields are required and cannot be empty",
@@ -1062,11 +1060,6 @@ const updateOneVenderService = async (req, res) => {
   const { serviceId } = req.params;
   const { AbouttheService, YearofExperience } = req.body;
 
-  if (!AbouttheService || !YearofExperience) {
-    return res
-      .status(400)
-      .json({ error: "All fields are required and cannot be empty" });
-  }
 
   try {
     const vendorService = await VendorServiceLisitingForm.findById(serviceId);
