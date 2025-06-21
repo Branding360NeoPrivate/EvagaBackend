@@ -11,8 +11,9 @@ const __dirname = dirname(__filename);
 
 const createBanner = async (req, res) => {
   const { altText, categoryId, forType, status } = req.body;
+  const bannerPreview = req.file?.preview || null;
 
-  const bannerImage = req.file ? req.file.key : "";
+  const bannerImage = req.file ? req.file.location : "";
   if (!bannerImage) {
     return res.status(400).json({ error: "Banner Image is required" });
   }
@@ -21,6 +22,7 @@ const createBanner = async (req, res) => {
     const newBannerData = {
       BannerId: "Ban" + generateUniqueId(),
       BannerUrl: bannerImage,
+      bannerPreview: bannerPreview,
       altText,
       status,
     };
@@ -66,7 +68,18 @@ const getVendorBanners = async (req, res) => {
     res.status(500).json({ message: "Error fetching banners", error });
   }
 };
+const getBannersByType = (forType) => async (req, res) => {
+  try {
+    const banners = await Banner.find({ forType, status: true });
+    res.status(200).json({ message: "Data Fetch Successfully", banners });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching banners", error });
+  }
+};
 
+export const getOurServicesBanners = getBannersByType("ourServices");
+export const getAbout1Banners = getBannersByType("about1");
+export const getAbout2Banners = getBannersByType("about2");
 const getBannerById = async (req, res) => {
   const { bannerId } = req.params;
   if (!bannerId) {
@@ -88,14 +101,15 @@ const getBannerById = async (req, res) => {
 
 const updateBannerById = async (req, res) => {
   const { bannerId } = req.params;
+  console.log(bannerId);
 
   if (!bannerId) {
     return res.status(400).json({ errors: "bannerId is required" });
   }
 
   const { altText, status } = req.body;
-  const bannerImage = req.file ? req.file.key : null; // Use the key from S3 upload
-
+  const bannerImage = req.file ? req.file.originalname : "";
+  const bannerPreview = req.file?.preview || null;
   try {
     const existingBanner = await Banner.findById(bannerId);
     if (!existingBanner) {
@@ -107,6 +121,7 @@ const updateBannerById = async (req, res) => {
       altText,
       status,
       BannerUrl: bannerImage || existingBanner.BannerUrl,
+      bannerPreview: bannerPreview || existingBanner.bannerPreview,
     };
 
     const banner = await Banner.findByIdAndUpdate(bannerId, updatedData, {
