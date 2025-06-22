@@ -78,8 +78,31 @@ const getBannersByType = (forType) => async (req, res) => {
 };
 
 export const getOurServicesBanners = getBannersByType("ourServices");
-export const getAbout1Banners = getBannersByType("about1");
-export const getAbout2Banners = getBannersByType("about2");
+// export const getAbout1Banners = getBannersByType("about1");
+// export const getAbout2Banners = getBannersByType("about2");
+// New combined endpoint for About Us banners
+export const getAboutUsBanners = async (req, res) => {
+  try {
+    // Fetch both banner types in parallel
+    const [about1Banners, about2Banners] = await Promise.all([
+      Banner.find({ forType: "about1", status: true }),
+      Banner.find({ forType: "about2", status: true }),
+    ]);
+
+    res.status(200).json({
+      message: "About Us Banners Fetched Successfully",
+      banners: {
+        topBanner: about1Banners[0] || null, // First banner of type
+        bottomBanner: about2Banners[0] || null,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching About Us banners",
+      error: error.message,
+    });
+  }
+};
 const getBannerById = async (req, res) => {
   const { bannerId } = req.params;
   if (!bannerId) {

@@ -1,8 +1,7 @@
 import {
   createBanner,
   deleteBannerById,
-  getAbout1Banners,
-  getAbout2Banners,
+  getAboutUsBanners,
   getBannerById,
   getBanners,
   getOurServicesBanners,
@@ -35,9 +34,11 @@ router
 router.route("/get-all-banner").get(upload().none(), getBanners);
 router.route("/get-user-banner").get(upload().none(), getUserBanners);
 router.route("/get-vendor-banner").get(upload().none(), getVendorBanners);
-router.route("/get-getOurServicesBanners").get(upload().none(), getOurServicesBanners);
-router.route("/get-getAbout1Banners").get(upload().none(), getAbout1Banners);
-router.route("/get-getAbout2Banners").get(upload().none(), getAbout2Banners);
+router
+  .route("/get-getOurServicesBanners")
+  .get(upload().none(), getOurServicesBanners);
+router.route("/get-getAboutUsBanners").get(upload().none(), getAboutUsBanners);
+// router.route("/get-getAbout2Banners").get(upload().none(), getAbout2Banners);
 router
   .route("/get-one-banner-by-id/:bannerId")
   .get(verifyJwt(["admin"]), upload().none(), getBannerById);
