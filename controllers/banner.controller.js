@@ -77,7 +77,7 @@ const getBannersByType = (forType) => async (req, res) => {
   }
 };
 
-export const getOurServicesBanners = getBannersByType("ourServices");
+export const getOurServicesBanners = getBannersByType("our services");
 // export const getAbout1Banners = getBannersByType("about1");
 // export const getAbout2Banners = getBannersByType("about2");
 // New combined endpoint for About Us banners
@@ -124,8 +124,7 @@ const getBannerById = async (req, res) => {
 
 const updateBannerById = async (req, res) => {
   const { bannerId } = req.params;
-  console.log(bannerId);
-
+ 
   if (!bannerId) {
     return res.status(400).json({ errors: "bannerId is required" });
   }
