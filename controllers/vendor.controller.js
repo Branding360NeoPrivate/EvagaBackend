@@ -11,7 +11,7 @@ import { generateUsername } from "../utils/generateVendorUserName.js";
 import { verifyBankDetails } from "../utils/verifyBank.js";
 import { verifyWithCashfree } from "../utils/verifyPanAndGst.js";
 import { sendAadhaarOtp, verifyAadhaarOtp } from "../utils/verifyAadhar.js";
-import { sendTemplateMessage } from "./wati.controller.js";
+// import { sendTemplateMessage } from "./wati.controller.js";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { sendEmail } from "../utils/emailService.js";
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
@@ -103,7 +103,7 @@ const registerVendor = async (req, res) => {
         kycLink: "https://www.eevagga.com",
       }
     );
-    await sendTemplateMessage(newUser?.phoneNumber, "vendor_sign_up_n", []);
+    // await sendTemplateMessage(newUser?.phoneNumber, "vendor_sign_up_n", []);
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }

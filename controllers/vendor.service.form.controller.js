@@ -14,7 +14,7 @@ import { Readable } from "stream";
 import { Upload } from "@aws-sdk/lib-storage";
 import { S3Client } from "@aws-sdk/client-s3";
 import mongoose from "mongoose";
-import { sendTemplateMessage } from "./wati.controller.js";
+// import { sendTemplateMessage } from "./wati.controller.js";
 import { sendEmail } from "../utils/emailService.js";
 const CLIENT_SECRET_PATH = "./client_secret.json";
 const TOKEN_PATH = "../token.json";
@@ -1511,11 +1511,11 @@ const VerifyService = async (req, res) => {
         dashboardLink: "https://www.eevagga.com",
       }
     );
-    await sendTemplateMessage(
-      vendor?.phoneNumber,
-      "service_live_notification_n",
-      []
-    );
+    // await sendTemplateMessage(
+    //   vendor?.phoneNumber,
+    //   "service_live_notification_n",
+    //   []
+    // );
   } catch (error) {
     res.status(500).json({
       message: "Failed to verify vendor service",

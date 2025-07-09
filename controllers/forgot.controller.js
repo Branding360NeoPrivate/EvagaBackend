@@ -2,7 +2,7 @@ import User from "../modals/user.modal.js";
 import Vender from "../modals/vendor.modal.js";
 import { sendEmail } from "../utils/emailService.js";
 import sendEmailWithTemplete from "../utils/mailer.js";
-import { sendTemplateMessage } from "./wati.controller.js";
+// import { sendTemplateMessage } from "./wati.controller.js";
 
 const authController = async (req, res) => {
   const { identifier, role } = req.body;
@@ -57,13 +57,13 @@ const authController = async (req, res) => {
         otp: otp,
       }
     );
-    await sendTemplateMessage(user?.phoneNumber, "reset_password", [
-      { name: "1", value: otp },
-    ]);
+    // await sendTemplateMessage(user?.phoneNumber, "reset_password", [
+    //   { name: "1", value: otp },
+    // ]);
 
     return res
       .status(200)
-      .json({ message: "OTP sent to the registered email and Whatsapp" });
+      .json({ message: "OTP sent to the registered email" });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal Server Error" });

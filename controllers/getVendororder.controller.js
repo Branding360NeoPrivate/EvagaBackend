@@ -3,7 +3,7 @@ import User from "../modals/user.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
 import { sendEmail } from "../utils/emailService.js";
 import addOrderToVendorCalendor from "./vendorCalendor.controller.js";
-import { sendTemplateMessage } from "./wati.controller.js";
+// import { sendTemplateMessage } from "./wati.controller.js";
 
 const getVendorNewOrders = async (req, res) => {
   const { vendorId } = req.params;
@@ -262,14 +262,14 @@ const startUserOrder = async (req, res) => {
       "OTP for Starting Your Service",
       `Dear Customer,\n\nPlease provide the OTP ${otp} to start your service. This OTP is valid for 60 Mins. If you did not request this, please contact our support team immediately.\n\nThank you for choosing our service.\n\nBest regards,\n`
     );
-    await sendTemplateMessage(user?.phoneNumber, "otp_for_activating_service", [
-      { name: "1", value: otp },
-      { name: "2", value: otp },
-    ]);
+    // await sendTemplateMessage(user?.phoneNumber, "otp_for_activating_service", [
+    //   { name: "1", value: otp },
+    //   { name: "2", value: otp },
+    // ]);
 
     return res.status(200).json({
       success: true,
-      message: "Order confirmed and OTP sent to user email and WhatsApp.",
+      message: "Order confirmed and OTP sent to user email.",
     });
   } catch (error) {
     console.error("Error confirming vendor orders:", error);
@@ -476,13 +476,13 @@ const endUserOrder = async (req, res) => {
       "OTP for Ending Your Service",
       `Dear Customer,\n\nPlease provide the OTP ${otp} to end your service. This OTP is valid for 6 hours. If you did not request this, please contact our support team immediately.\n\nThank you for choosing our service.\n\nBest regards,\n`
     );
-    await sendTemplateMessage(user?.phoneNumber, "service_closed_otp", [
-      { name: "1", value: otp },
-      { name: "2", value: otp },
-    ]);
+    // await sendTemplateMessage(user?.phoneNumber, "service_closed_otp", [
+    //   { name: "1", value: otp },
+    //   { name: "2", value: otp },
+    // ]);
     return res.status(200).json({
       success: true,
-      message: "End-service OTP sent to user email and WhatsApp.",
+      message: "End-service OTP sent to user email.",
     });
   } catch (error) {
     console.error("Error sending end-service OTP:", error);

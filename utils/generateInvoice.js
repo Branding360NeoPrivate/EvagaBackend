@@ -1,4 +1,4 @@
-import { sendTemplateMessage } from "../controllers/wati.controller.js";
+// import { sendTemplateMessage } from "../controllers/wati.controller.js";
 import User from "../modals/user.modal.js";
 import Vender from "../modals/vendor.modal.js";
 import vendorServiceListingFormModal from "../modals/vendorServiceListingForm.modal.js";
@@ -87,25 +87,25 @@ export const generateInvoice = (order) => {
             }
           );
 
-          await sendTemplateMessage(
-            user?.phoneNumber,
-            "order_confirmation_for_user_n",
-            [
-              { name: "1", value: user?.name },
-              { name: "2", value: vendorName },
-              { name: "3", value: extractedDetails?.Title },
-              { name: "4", value: `${item?.date} ${item?.time}` },
-            ]
-          );
-          await sendTemplateMessage(vendor?.phoneNumber, "new_booking_alert_new", [
-            { name: "1", value: extractedDetails?.Title },
-            { name: "2", value: `${item?.date} ${item?.time}` },
-            {
-              name: "3",
-              value: `${order?.address?.address}, ${order?.address?.addressLine1}, ${order?.address?.addressLine2}, ${order?.address?.state}, ${order?.address?.pinCode}`,
-            },
-            { name: "4", value: user?.name },
-          ]);
+          // await sendTemplateMessage(
+          //   user?.phoneNumber,
+          //   "order_confirmation_for_user_n",
+          //   [
+          //     { name: "1", value: user?.name },
+          //     { name: "2", value: vendorName },
+          //     { name: "3", value: extractedDetails?.Title },
+          //     { name: "4", value: `${item?.date} ${item?.time}` },
+          //   ]
+          // );
+          // await sendTemplateMessage(vendor?.phoneNumber, "new_booking_alert_new", [
+          //   { name: "1", value: extractedDetails?.Title },
+          //   { name: "2", value: `${item?.date} ${item?.time}` },
+          //   {
+          //     name: "3",
+          //     value: `${order?.address?.address}, ${order?.address?.addressLine1}, ${order?.address?.addressLine2}, ${order?.address?.state}, ${order?.address?.pinCode}`,
+          //   },
+          //   { name: "4", value: user?.name },
+          // ]);
 
           return invoiceDetails;
         })
