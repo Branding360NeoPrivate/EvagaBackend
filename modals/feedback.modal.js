@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const feedbackSchema = new mongoose.Schema(
   {
+    email: { type: String, required: true },
     bookingProcess: { type: Number, required: true, min: 1, max: 5 },
     customerCare: { type: Number, required: true, min: 1, max: 5 },
     eventExecution: { type: Number, required: true, min: 1, max: 5 },
@@ -10,7 +11,7 @@ const feedbackSchema = new mongoose.Schema(
     pricingClarity: { type: Number, required: true, min: 1, max: 5 },
     recommend: { type: String, required: true },
     responseTime: { type: Number, required: true, min: 1, max: 5 },
-    suggestions: { type: String, default: "" }
+    suggestions: { type: String, default: "" },
   },
   {
     timestamps: true,

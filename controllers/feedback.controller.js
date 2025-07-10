@@ -13,6 +13,7 @@ const addFeedback = async (req, res) => {
     recommend,
     responseTime,
     suggestions,
+    email,
   } = req.body;
 
   try {
@@ -26,6 +27,7 @@ const addFeedback = async (req, res) => {
       recommend,
       responseTime,
       suggestions,
+      email,
     });
 
     await newFeedback.save();

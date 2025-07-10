@@ -4,11 +4,11 @@ import {
   processImagePreview,
   uploadToS3WithEncoded,
 } from "../middlewares/uploadWithEncode.middleware.js";
-import { createGallery } from "../controllers/gallery.controller.js";
+import { createGallery, deleteGallery, getAllGalleries } from "../controllers/gallery.controller.js";
 const router = express.Router();
 
 router.route("/add-gallery").post(
-//   verifyJwt(["admin"]),
+  //   verifyJwt(["admin"]),
   uploadToS3WithEncoded("gallery", [
     "image/png",
     "image/jpg",
@@ -18,5 +18,9 @@ router.route("/add-gallery").post(
   processImagePreview,
   createGallery
 );
+router.get("/", getAllGalleries);
+
+// Delete a gallery
+router.delete("/:id", deleteGallery);
 
 export default router;

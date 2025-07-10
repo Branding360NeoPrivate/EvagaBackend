@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Gallery from "../modals/gallery.model.js";
 
 const createGallery = async (req, res) => {
@@ -17,11 +18,70 @@ const createGallery = async (req, res) => {
     const newGallery = new Gallery(newGalleryData);
     await newGallery.save();
 
-    res.status(201).json({ message: "Gallery Saved Successfully" });
+    res.status(201).json({status:201, message: "Gallery Saved Successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error creating Gallery", error });
   }
 };
+const getAllGalleries = async (req, res) => {
+  try {
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
+    // Optional filtering by category
+    const categoryFilter = req.query.category
+      ? { category: req.query.category }
+      : {};
 
-export { createGallery };
+    // Get galleries with pagination
+    const galleries = await Gallery.find(categoryFilter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Get total count for pagination info
+    const total = await Gallery.countDocuments(categoryFilter);
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      data: galleries,
+      pagination: {
+        total,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching galleries", error });
+  }
+};
+
+// Delete a gallery
+const deleteGallery = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid gallery ID" });
+    }
+
+    const deletedGallery = await Gallery.findByIdAndDelete(id);
+
+    if (!deletedGallery) {
+      return res.status(404).json({ error: "Gallery not found" });
+    }
+
+    res.status(200).json({ message: "Gallery deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    
+    res.status(500).json({ message: "Error deleting gallery", error });
+  }
+};
+
+export { createGallery, getAllGalleries, deleteGallery };
