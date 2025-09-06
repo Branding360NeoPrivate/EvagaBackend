@@ -38,6 +38,8 @@ import logerror from "./routes/errorLog.routes.js";
 import review from "./routes/review.routes.js";
 import bookingCTA from "./routes/bookingCTA.routes.js";
 import galleryRoute from "./routes/gallery.routes.js";
+import customEventsRoutes from "./routes/customEvents.routes.js";
+import customEventSubmissionRoutes from "./routes/customEventSubmission.routes.js";
 import helmet from "helmet";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -79,8 +81,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(helmet());
 
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 app.use("/images", express.static("public"));
@@ -164,6 +166,8 @@ app.use("/api/v1/newsletter", newsletter);
 app.use("/api/v1/logerror", logerror);
 app.use("/api/v1/bookingCTA", bookingCTA);
 app.use("/api/v1/galleryRoute", galleryRoute);
+app.use("/api/v1/customEvents", customEventsRoutes);
+app.use("/api/v1/customEventSubmissions", customEventSubmissionRoutes);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });
