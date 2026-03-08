@@ -8,70 +8,70 @@ import formRoute from "./routes/form.routes.js";
 import menuRoute from "./routes/menu.routes.js";
 import bannerRoutes from "./routes/banner.routes.js";
 import packagesRoute from "./routes/package.routes.js";
-import adminRoutes from "./routes/admin.routes.js";
-import adminActionRoutes from "./routes/adminAction.routes.js";
-import createNewService from "./routes/vender.service.list.routes.js";
 import wishlist from "./routes/wishlist.routes.js";
 import coupons from "./routes/coupons.routes.js";
 import categoryFee from "./routes/categoryFee.routes.js";
-import cart from "./routes/cart.routes.js";
 import GstPercentage from "./routes/gstPercentage.routes.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-import waitlist from "./routes/waitlist.routes.js";
-import feedback from "./routes/feedback.routes.js";
+import cart from "./routes/cart.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import adminActionRoutes from "./routes/adminAction.routes.js";
+import createNewService from "./routes/vender.service.list.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import createorderRoutes from "./routes/createOrder.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import validateRoutes from "./routes/validateOrder.routes.js";
+import waitlist from "./routes/waitlist.routes.js";
+import feedback from "./routes/feedback.routes.js";
 import getPaymentDeatils from "./routes/getFullPaymentDetails.routes.js";
 import getUserOrder from "./routes/getUserOrder.routes.js";
 import getVendorOrder from "./routes/getVendororder.routes.js";
 import Query from "./routes/query.routes.js";
 import recentView from "./routes/recentlyViewed.routes.js";
+import zohoInvoice from "./config/zohoRoutes.js";
 import distanceRoutes from "./routes/distanceRoutes.js";
 import blog from "./routes/blog.routes.js";
 import newsletter from "./routes/newsLetter.routes.js";
-import logerror from "./routes/errorLog.routes.js";
 import review from "./routes/review.routes.js";
+import logerror from "./routes/errorLog.routes.js";
 import bookingCTA from "./routes/bookingCTA.routes.js";
 import galleryRoute from "./routes/gallery.routes.js";
 import customEventsRoutes from "./routes/customEvents.routes.js";
 import customEventSubmissionRoutes from "./routes/customEventSubmission.routes.js";
+import testimonialRoutes from "./routes/testimonial.routes.js";
+// import wati from "./routes/wati.routes.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 import helmet from "helmet";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
+app.use((req, res, next) => {
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  next();
+});
+
 // app.use(
 //   cors({
 //     origin: "http://localhost:3000,http://localhost:8001",
 //     credentials: true,
 //   })
 // );
-// const allowedOrigins = [
-//   "http://localhost:3000",
-//   "http://localhost:8001",
-//   "https://main.d33v12li0wdsv4.amplifyapp.com",
-//   "https://13.53.219.16",
-//   "http://13.53.219.16",
-//   "http://evagatest.s3-website.eu-north-1.amazonaws.com/",
-// ];
-// const corsOptions = {
-//   origin: function (origin, callback) {
-//     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-//       callback(null, true);
-//     } else {
-//       callback(new Error("Not allowed by CORS"));
-//     }
-//   },
-//   credentials: true,
-// };
-// app.use(cors());
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:8001",
+  "https://main.d33v12li0wdsv4.amplifyapp.com",
+  "https://13.53.219.16",
+];
 const corsOptions = {
-  origin: (origin, callback) => {
-    callback(null, true);
+  origin: function (origin, callback) {
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
   },
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   allowedHeaders: "Content-Type,Authorization",
@@ -79,6 +79,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
 app.use(helmet());
 
 app.use(express.json({ limit: "50mb" }));
@@ -146,8 +147,8 @@ app.use("/api/v1/packages", packagesRoute);
 app.use("/api/v1/wishlist", wishlist);
 app.use("/api/v1/coupons", coupons);
 app.use("/api/v1/categoryFee", categoryFee);
-app.use("/api/v1/cart", cart);
 app.use("/api/v1/gstPercentage", GstPercentage);
+app.use("/api/v1/cart", cart);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/createorder", createorderRoutes);
 app.use("/api/v1/order", orderRoutes);
@@ -159,6 +160,7 @@ app.use("/api/v1/userOrder", getUserOrder);
 app.use("/api/v1/vendorOrder", getVendorOrder);
 app.use("/api/v1/Query", Query);
 app.use("/api/v1/recentView", recentView);
+app.use("/api/v1/zoho", zohoInvoice);
 app.use("/api/v1/distance", distanceRoutes);
 app.use("/api/v1/blog", blog);
 app.use("/api/v1/review", review);
@@ -168,6 +170,8 @@ app.use("/api/v1/bookingCTA", bookingCTA);
 app.use("/api/v1/galleryRoute", galleryRoute);
 app.use("/api/v1/customEvents", customEventsRoutes);
 app.use("/api/v1/customEventSubmissions", customEventSubmissionRoutes);
+app.use("/api/v1/testimonials", testimonialRoutes);
+// app.use("/api/v1/wati", wati);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });

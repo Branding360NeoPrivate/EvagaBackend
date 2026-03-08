@@ -23,7 +23,6 @@ export const processImagePreview = async (req, res, next) => {
   const originalKey = `${folder}/${timestamp}_${cleanName}`;
 
   try {
-    // 1️⃣ Upload ORIGINAL to S3
     await s3.send(
       new PutObjectCommand({
         Bucket: process.env.PUBLIC_BUCKET_NAME,
@@ -32,10 +31,9 @@ export const processImagePreview = async (req, res, next) => {
         ContentType: req.file.mimetype,
       })
     );
-    req.file.key = originalKey; // for your controller’s BannerUrl
+    req.file.key = originalKey;
     req.file.location = `${originalKey}`;
 
-    // 2️⃣ Generate in-memory PREVIEW (no S3 upload)
     const previewBuffer = await sharp(req.file.buffer)
       .resize(100, 100, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 80, progressive: true })
@@ -53,22 +51,6 @@ export const processImagePreview = async (req, res, next) => {
   }
 };
 
-const fileFilter = (allowedTypes) => (req, file, cb) => {
-  if (allowedTypes.includes(file.mimetype)) cb(null, true);
-  else cb(new Error("Unsupported file type"), false);
-};
-
-// Only pulls the file into memory (so we have `req.file.buffer`)
-export const uploadToS3WithEncoded = (folderName, allowedTypes) => {
-  // stash the folder name for the next middleware
-  return (req, res, next) => {
-    req._s3Folder = folderName;
-    multer({
-      storage: multer.memoryStorage(),
-      fileFilter: fileFilter(allowedTypes),
-    }).single("bannerImage")(req, res, next);
-  };
-};
 // New middleware for processing multiple files (for custom events)
 export const processMultipleImagePreviews = async (req, res, next) => {
   if (!req.files || req.files.length === 0) {
@@ -112,7 +94,7 @@ export const processMultipleImagePreviews = async (req, res, next) => {
           ...file,
           key: originalKey,
           location: originalKey,
-          preview: `data:image/jpeg;base64,${previewBuffer.toString("base64")}`,
+          preview: `data:image/jpeg;base64,${previewBuffer.toString("base64")}`
         };
       })
     );
@@ -126,6 +108,24 @@ export const processMultipleImagePreviews = async (req, res, next) => {
       .json({ error: "Error uploading or processing images" });
   }
 };
+
+const fileFilter = (allowedTypes) => (req, file, cb) => {
+  if (allowedTypes.includes(file.mimetype)) cb(null, true);
+  else cb(new Error("Unsupported file type"), false);
+};
+
+// Only pulls the file into memory (so we have `req.file.buffer`)
+export const uploadToS3WithEncoded = (folderName, allowedTypes, fieldName = "bannerImage") => {
+  // stash the folder name for the next middleware
+  return (req, res, next) => {
+    req._s3Folder = folderName;
+    multer({
+      storage: multer.memoryStorage(),
+      fileFilter: fileFilter(allowedTypes),
+    }).single(fieldName)(req, res, next);
+  };
+};
+
 // New middleware for handling multiple files with custom field names (for custom events)
 export const uploadMultipleToS3WithEncoded = (folderName, allowedTypes) => {
   return (req, res, next) => {

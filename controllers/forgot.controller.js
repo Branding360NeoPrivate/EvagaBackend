@@ -1,8 +1,9 @@
 import User from "../modals/user.modal.js";
 import Vender from "../modals/vendor.modal.js";
+import Admin from "../modals/admin.modal.js";
 import { sendEmail } from "../utils/emailService.js";
 import sendEmailWithTemplete from "../utils/mailer.js";
-// import { sendTemplateMessage } from "./wati.controller.js";
+import { sendTemplateMessage } from "./wati.controller.js";
 
 const authController = async (req, res) => {
   const { identifier, role } = req.body;
@@ -23,6 +24,11 @@ const authController = async (req, res) => {
     user: {
       model: User,
       emailSubject: "Your OTP for User Verification",
+      emailBody: (otp) => `Your OTP is: ${otp}. It is valid for 15 minutes.`,
+    },
+    admin: {
+      model: Admin,
+      emailSubject: "Your OTP for Admin Verification",
       emailBody: (otp) => `Your OTP is: ${otp}. It is valid for 15 minutes.`,
     },
   };
@@ -63,7 +69,7 @@ const authController = async (req, res) => {
 
     return res
       .status(200)
-      .json({ message: "OTP sent to the registered email" });
+      .json({ message: "OTP sent to the registered email and Whatsapp" });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal Server Error" });
