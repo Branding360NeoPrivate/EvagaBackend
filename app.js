@@ -59,24 +59,20 @@ app.use((req, res, next) => {
 //     credentials: true,
 //   })
 // );
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:8001",
-  "https://main.d33v12li0wdsv4.amplifyapp.com",
-  "https://13.53.219.16",
-];
+// const allowedOrigins = [
+//   "http://localhost:3000",
+//   "http://localhost:8001",
+//   "https://main.d33v12li0wdsv4.amplifyapp.com",
+//   "https://13.53.219.16",
+// ];
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
+  origin: (origin, callback) => {
+    callback(null, true);
   },
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   allowedHeaders: "Content-Type,Authorization",
   credentials: true,
-};
+}
 
 app.use(cors(corsOptions));
 
