@@ -60,7 +60,7 @@ const getBanners = async (req, res) => {
       banners,
       currentPage: page,
       totalPages: Math.ceil(totalCount / limit),
-      totalCount
+      totalCount,
     });
   } catch (error) {
     res.status(500).json({ message: "Error fetching banners", error });
@@ -125,7 +125,7 @@ const getBannerById = async (req, res) => {
 
   try {
     const banner = await Banner.findById(bannerId).select(
-      "-BannerId -createdAt -updatedAt"
+      "-BannerId -createdAt -updatedAt",
     );
     if (!banner) {
       return res.status(404).json({ message: "Banner not found" });
@@ -144,7 +144,7 @@ const updateBannerById = async (req, res) => {
   }
 
   const { altText, status } = req.body;
-  const bannerImage = req.file ? req.file.originalname : "";
+  const bannerImage = req.file ? req.file.location : "";
   const bannerPreview = req.file?.preview || null;
   try {
     const existingBanner = await Banner.findById(bannerId);
@@ -200,7 +200,7 @@ const updateBannerById = async (req, res) => {
         const deleteResponse = await s3Client.send(deleteCommand);
         console.log(
           "Deleted new banner image during rollback:",
-          deleteResponse
+          deleteResponse,
         );
       } catch (err) {
         console.error("Error deleting new banner image during rollback:", err);
