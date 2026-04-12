@@ -40,6 +40,7 @@ import customEventSubmissionRoutes from "./routes/customEventSubmission.routes.j
 import testimonialRoutes from "./routes/testimonial.routes.js";
 import syncLeadsRoutes from "./routes/syncLeads.routes.js";
 import qrRoutes from "./routes/QR.routes.js";
+import floatingVideoRoutes from "./routes/FloatingVideo.route.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -170,6 +171,7 @@ app.use("/api/v1/customEventSubmissions", customEventSubmissionRoutes);
 app.use("/api/v1/testimonials", testimonialRoutes);
 app.use("/api/v1/syncLeads", syncLeadsRoutes);
 app.use("/api/v1/qr", qrRoutes);
+app.use("/api/v1/floating-video", floatingVideoRoutes);
 app.get("/", async (req, res) => {
   res.status(200).json("Server Is Live");
 });
