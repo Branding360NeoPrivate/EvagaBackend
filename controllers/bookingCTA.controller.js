@@ -139,6 +139,7 @@ export const downloadBookingsCSV = async (req, res) => {
       "phone",
       "eventType",
       "eventMonth",
+      "eventLocation",
       "pageCatgeory",
       "sku",
       "isRead",
