@@ -1,6 +1,6 @@
 import express from "express";
 import {
-    syncLeadsData,
+    createSyncLead,
     getAllSyncLeads,
     getOneSyncLead,
     updateOneSyncLead,
@@ -11,8 +11,8 @@ import verifyJwt from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// router.get("/sync-leads", syncLeadsData);
-router.post("/sync-leads", verifyJwt(["admin", "sub_admin"]), syncLeadsData);
+// Create lead manually
+router.post("/create", verifyJwt(["admin", "sub_admin"]), createSyncLead);
 
 // GET all with pagination and sorting via query params
 router.get("/get-all", getAllSyncLeads);

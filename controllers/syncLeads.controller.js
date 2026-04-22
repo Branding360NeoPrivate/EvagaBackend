@@ -1,87 +1,57 @@
-import axios from "axios";
 import SyncLeads from "../modals/syncLeads.modal.js";
 
-const syncLeadsData = async (req, res) => {
+const createSyncLead = async (req, res) => {
     try {
-        const response = await axios.post(
-            "https://api-in21.leadsquared.com/v2/LeadManagement.svc/Leads.Get",
-            {},
-            {
-                params: {
-                    accessKey: process.env.leadsquareAcces_key,
-                    secretKey: process.env.leadsquareSecret_key,
-                },
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            }
-        );
+        const { customerName, customerMobile, items } = req.body;
 
-        // LeadSquared usually returns an array of leads directly or wrapped in an object
-        const leadsArray = Array.isArray(response.data) ? response.data : (response.data.message || response.data.Data || []);
+        if (!customerName || !customerMobile) {
+            return res.status(400).json({ error: "customerName and customerMobile are required." });
+        }
 
-        let syncCount = 0;
+        // Generate a unique orderId
+        const generateOrderId = () => "LD-" + Date.now().toString().slice(-6) + Math.random().toString(36).substring(2, 6).toUpperCase();
+        let orderId = generateOrderId();
+        
+        // Ensure uniqueness
+        while (await SyncLeads.findOne({ orderId })) {
+            orderId = generateOrderId();
+        }
 
-        for (const lead of leadsArray) {
-            // Extracting fields intelligently depending on exact API payload format
-            const orderId = lead.orderId || lead.orderid || lead.mx_orderid || String(lead.ProspectID || lead.id || "");
-
-            // Map other required fields
-            const customerName = lead.customerName || lead.customer_name || lead.FirstName || lead.Name || "N/A";
-            const customerMobile = lead.customerMobile || lead.customer_mobile || lead.Phone || lead.Mobile || "N/A";
-
-            // Format items array if available
-            let parsedItems = [];
-            let items = [];
-            if (lead.items && Array.isArray(lead.items)) {
-                parsedItems = lead.items;
-            } else if (typeof lead.items === "string") {
-                try {
-                    parsedItems = JSON.parse(lead.items);
-                } catch (e) {
-                    parsedItems = [];
-                }
-            }
-
-            for (let item of parsedItems) {
+        let parsedItems = [];
+        if (items && Array.isArray(items)) {
+            parsedItems = items.map(item => {
                 let statusVal = item.status || item.currentStatus || "pending";
-                items.push({
+                return {
                     name: item.name || item.itemName || "Unknown",
                     currentStatus: statusVal,
                     statusHistory: [
                         {
                             status: statusVal,
-                            updatedBy: "system",
+                            updatedBy: req.user && req.user._id ? String(req.user._id) : "system",
                             timestamp: new Date()
                         }
                     ]
-                });
-            }
-
-            // Save to DB only if it isn't already present
-            if (orderId) {
-                const existingLead = await SyncLeads.findOne({ orderId });
-                if (!existingLead) {
-                    const newSyncLead = new SyncLeads({
-                        orderId,
-                        customerName,
-                        customerMobile,
-                        items
-                    });
-                    await newSyncLead.save();
-                    syncCount++;
-                }
-            }
+                };
+            });
         }
 
-        return res.status(200).json({
-            message: "Leads synced successfully",
-            syncedCount: syncCount
+        const newLead = new SyncLeads({
+            orderId,
+            customerName,
+            customerMobile,
+            items: parsedItems
+        });
+
+        await newLead.save();
+
+        return res.status(201).json({
+            message: "Lead created successfully",
+            lead: newLead
         });
 
     } catch (error) {
-        console.error("Error in syncLeadsData:", error);
-        return res.status(500).json({ error: "Internal server error during lead sync." });
+        console.error("Error in createSyncLead:", error);
+        return res.status(500).json({ error: "Internal server error during lead creation." });
     }
 };
 
@@ -240,7 +210,7 @@ const trackSyncLead = async (req, res) => {
 };
 
 export {
-    syncLeadsData,
+    createSyncLead,
     getAllSyncLeads,
     getOneSyncLead,
     updateOneSyncLead,
