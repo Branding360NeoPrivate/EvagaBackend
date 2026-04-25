@@ -89,11 +89,13 @@ const loginAdmin = async (req, res) => {
       admin.role
     );
 
+
     res.status(200).json({
       message: "Login successful",
-      role: "admin",
+      role: admin.role,
       token: accessToken,
       userId: admin._id,
+      permissions: admin.permissions,
     });
   } catch (error) {
 
@@ -202,7 +204,7 @@ const deleteAdmin = async (req, res) => {
 };
 const getAllAdmin = async (req, res) => {
   try {
-    const admin = await Admin.find({ role: "sub_admin" })
+    const admin = await Admin.find({ role: { $ne: "admin" } })
       .sort({ createdAt: -1 })
       .select("-password -refreshToken -updatedAt -createdAt");
     if (!admin) {

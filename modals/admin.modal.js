@@ -9,7 +9,7 @@ const adminSchema = new mongoose.Schema(
     role: {
       type: String,
       default: "sub_admin",
-      enum: ["admin", "sub_admin"],
+      enum: ["admin", "sub_admin", "employee"],
     },
     permissions: {
       type: [String],

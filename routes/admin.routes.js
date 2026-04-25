@@ -20,19 +20,19 @@ router.route("/registerAdmin").post(upload().none(), registerAdmin);
 router.route("/loginAdmin").post(upload().none(), loginAdmin);
 router
   .route("/updateAdmin/:userId")
-  .put(verifyJwt(["admin", "sub_admin"]), upload().none(), updateAdmin);
+  .put(verifyJwt(["admin", "sub_admin", "employee"]), upload().none(), updateAdmin);
 router
   .route("/getOneAdmin/:userId")
-  .get(verifyJwt(["admin", "sub_admin"]), upload().none(), getOneAdmin);
+  .get(verifyJwt(["admin", "sub_admin", "employee"]), upload().none(), getOneAdmin);
 router
   .route("/changeAdminPassword/:userId")
-  .put(verifyJwt(["admin", "sub_admin"]), upload().none(), changePasswordAdmin);
+  .put(verifyJwt(["admin", "sub_admin", "employee"]), upload().none(), changePasswordAdmin);
 router
   .route("/deleteAdminProfile/:userId")
   .delete(verifyJwt(["admin"]), upload().none(), deleteAdmin);
 router
   .route("/logoutAdmin/:userId")
-  .post(verifyJwt(["admin", "sub_admin"]), upload().none(), logoutAdmin);
+  .post(verifyJwt(["admin", "sub_admin", "employee"]), upload().none(), logoutAdmin);
 router
   .route("/getAllAdmin")
   .get(verifyJwt(["admin"]), upload().none(), getAllAdmin);
